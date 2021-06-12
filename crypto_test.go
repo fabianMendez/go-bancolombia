@@ -1,0 +1,177 @@
+package main
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestProcessPassword(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		output string
+	}{
+		{
+			name:   "test 1",
+			input:  "AAAA",
+			output: "KJhkDzN1zUvQMI2/FeZPFQarGj399I+05ag7pD69mU8mCPbHvQbPmX9Emv8azqgwAipPHBM7CSZZqtXutxLPcPJwS0KuCAXAaAUHwx822ZCYWi4UTk9aYXMVTtPnP7E2uZ2SP/2CqM0sv0EhRtRP1S/5h4OwxM4ukHi9beHbrdifA2FtxNhshys4JXMz+BtFc71ByVd9gtRjrTvfp1zUCBMTtygRIpLIhCar3/XGTVPl6qiQII/mI/2EBxskqGayXeV22DG10F11a/gYY5mLFrWOP/IunWYum1T4hQz1U1b4ZsWh/GiVH8ZYXUKGZQGYsVuVf8/3nO90PaNMrqNeIw==",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := processPassword(tt.input)
+			assert.Equal(t, tt.output, actual)
+		})
+	}
+}
+
+func TestRsaSetPublic(t *testing.T) {
+	k := rsaKey{}
+	k.setPublic(
+		"A6CA1BB4BD803E5704A071E8F7370FD68F2A42CAB574A765693F0F54796CB8AD2CF1B624005119FE651227F7992FF6A6D1979C9B72EA0EAD789F1CBADAB9851779CB8F5F82F40BC71C5C303A10298ED6DC5657E3401AE5720F06836F098366441AC30AB35F13FAB8B6CE81955A1181FCA0AD4EA471CC09C51EAE8EDA42E8C615F933483449CBC67883F407430CB856E4EEC1919BFDD38850CCF5837EC67D8CF802EC30836099592FCDB6CEF4D4AB8EC7F95229B6B262DC6F9A62BFD082CCF98D8FC73FADFA2CCBDDBD17126206E0EC41FE85ECDB9B7631A7EDEF193E4971ADA3E4AB3FFE05F5146907255AD29D0AFB91160C95E225514E1CD07E35BA157A44D1",
+		"10001",
+	)
+	assert.Equal(t, int64(65537), k.e)
+	assert.Equal(t, bigInteger{
+		t: 74, s: 0,
+		DB: 28, DM: 268435455, DV: 268435456,
+		F1:  24,
+		F2:  4,
+		FV:  4503599627370496,
+		arr: []int64{91899089, 132340641, 21896400, 157164117, 194057740, 220844207, 151463258, 6246726, 78331902, 119200318, 253312585, 52068062, 215718774, 69199966, 34005228, 198275366, 170707933, 208927455, 217681295, 201132076, 208640610, 191571501, 133780009, 223000812, 230084340, 160797436, 204505952, 147816494, 58639997, 84725592, 201184136, 250353945, 213407460, 255882288, 197556355, 75711644, 102103347, 228863628, 85896846, 119324828, 11357860, 18358218, 243373402, 262900588, 179527443, 71412784, 252281702, 15755318, 1762674, 90537524, 160356060, 50569474, 197598300, 100151104, 125422479, 229349457, 144645306, 245426903, 127703922, 258632985, 133667119, 266752290, 67129625, 47127394, 158120109, 66123079, 78079337, 70036311, 265719594, 244282224, 117743729, 198706149, 113908660, 10},
+	}, k.n)
+	assert.Equal(t, 2048, k.n.bitLength())
+}
+
+func TestNBits(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  int64
+		output int
+	}{
+		{
+			name:   "test 1",
+			input:  1,
+			output: 1,
+		},
+		{
+			name:   "test 2",
+			input:  2,
+			output: 2,
+		},
+		{
+			name:   "test 3",
+			input:  3,
+			output: 2,
+		},
+		{
+			name:   "test 4",
+			input:  4,
+			output: 3,
+		},
+		{
+			name:   "test 5",
+			input:  8,
+			output: 4,
+		},
+		{
+			name:   "test 6",
+			input:  2048,
+			output: 12,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := nbits(tt.input)
+			assert.Equal(t, tt.output, actual)
+		})
+	}
+}
+
+func TestPkcs1pad2(t *testing.T) {
+	rng_pool = make([]byte, 256)
+	actual := pkcs1pad2(`AAAA|ozzutFJrd0LBW45xy1kS`, 256)
+	assert.Equal(t, bigInteger{
+		t: 73, s: 0,
+		DB: 28, DM: 268435455, DV: 268435456, FV: 4503599627370496, F1: 24, F2: 4,
+		arr: []int64{
+			154233683,
+			54744967,
+			4997719,
+			78063171,
+			175469638,
+			130480039,
+			21053761,
+			161587204,
+			268394322,
+			121434164,
+			78418508,
+			3550946,
+			12455929,
+			24891754,
+			185073407,
+			228296779,
+			244302159,
+			107191025,
+			116453635,
+			123234106,
+			173845849,
+			224383917,
+			99891756,
+			191404168,
+			52664173,
+			1980702,
+			201686014,
+			136607849,
+			22370042,
+			4648679,
+			172316499,
+			36552800,
+			151325320,
+			54152351,
+			158085758,
+			100144992,
+			126304478,
+			252283695,
+			75706,
+			13934210,
+			127988695,
+			244294746,
+			137659364,
+			58017546,
+			172378819,
+			95552461,
+			9528036,
+			65724189,
+			172768429,
+			66297275,
+			136154050,
+			164523179,
+			22702920,
+			226522046,
+			66709101,
+			110240193,
+			210752781,
+			190639350,
+			171925521,
+			204453797,
+			100106205,
+			47008966,
+			55805816,
+			258696058,
+			224370946,
+			217025253,
+			7518543,
+			251152916,
+			82614777,
+			18006155,
+			125838249,
+			35991357,
+			195526,
+			0,
+		},
+	}, actual)
+}
