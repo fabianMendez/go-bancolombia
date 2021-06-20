@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ type Client interface {
 	Login(username, password string) error
 	Logout() error
 	GetDepositsBalance() error
+	GetSavingsDetail(page int) ([]SavingsDetail, error)
 }
 
 type client struct {
@@ -375,6 +378,25 @@ func (c *client) buildAction(baseURL, action string) (string, error) {
 
 func (c *client) submitForm(doc *html.Node, baseURL, id string) (*http.Response, error) {
 	form := getElementByID(doc, id)
+	if form == nil {
+		html.Render(os.Stderr, doc)
+		/*
+			<html><head></head><body>
+			<form name="openTop" id="openTop" action="/mua/initAuthProcess" method="GET" target="_top">
+
+			</form>
+
+
+			<script type="text/javascript">
+			    var form = document.getElementById("openTop");
+			    form.submit();
+			</script>
+
+
+			</body></html>
+		*/
+		return nil, fmt.Errorf("form not found: %s", id)
+	}
 	action := getAttribute(form, "action")
 	return c.submitFormValues(doc, baseURL, id, action, nil)
 }
@@ -592,7 +614,7 @@ func (c *client) GetDepositsBalance() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("request failed: %w", err)
+		return fmt.Errorf("request failed: %s", resp.Status)
 	}
 
 	c.log.Println("reading request")
@@ -603,6 +625,96 @@ func (c *client) GetDepositsBalance() error {
 
 	fmt.Println(string(content))
 	return nil
+}
+
+func (c *client) preGetSavingsDetail(step int) error {
+	var err error
+
+	if step == 1 {
+		_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/pages/jsp-ns/olb/ACCTARGETQuery?entity=MOVCA&fwviejoId=CA_22542427103650&operation=MOVCA&clean=true"))
+	} else {
+		_, err = c.httpClient.Get(c.baseURL + c.cstUrl(fmt.Sprintf("/cb/pages/jsp-ns/olb/AccountDetailAsset?&step=%d&open=Y", step)))
+	}
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type SavingsDetail struct {
+	Amount      float64 `json:"amount"`
+	BranchID    string  `json:"branchId"`
+	Date        string  `json:"date"`
+	Description string  `json:"description"`
+	OptionalRef string  `json:"optionalRef"`
+}
+
+func (c *client) GetSavingsDetail(page int) ([]SavingsDetail, error) {
+	err := c.preGetSavingsDetail(page)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	nd := strconv.FormatInt(now.UnixNano(), 10)[:13]
+
+	u := fmt.Sprintf(`%s/cb/pages/jsp/account/getSavingsDetailAction.action?CSRF_TOKEN=%s`, c.baseURL, c.csrfToken)
+	bodyStr := fmt.Sprintf(`_search=false&nd=%s&rows=-1&page=1&sidx=date&sord=desc`, nd)
+	body := strings.NewReader(bodyStr)
+
+	req, err := http.NewRequest(http.MethodPost, u, body)
+	if err != nil {
+		return nil, fmt.Errorf("could not create request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0")
+	req.Header.Set("Accept", "*")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	req.Header.Set("Origin", c.baseURL)
+	req.Header.Set("Referer", c.baseURL+"/cb/pages/jsp/home/index.jsp")
+	// req.Header.Set("Cookie", cookie)
+
+	c.log.Println("sending request")
+	resp, err := c.httpClient.Do(req)
+	c.log.Println("request sent")
+	if err != nil {
+		return nil, err
+	}
+
+	c.log.Println("defering body close")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed: %s", resp.Status)
+	}
+
+	c.log.Println("reading request")
+	// content, err := io.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return err
+	// }
+
+	response := struct {
+		JSON      string          `json:"JSON"`
+		GridModel []SavingsDetail `json:"gridModel"`
+		Page      int64           `json:"page"`
+		Records   int64           `json:"records"`
+		Rows      int64           `json:"rows"`
+		Sidx      string          `json:"sidx"`
+		Sord      string          `json:"sord"`
+		Total     int64           `json:"total"`
+	}{}
+
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode response: %w", err)
+	}
+
+	// fmt.Println(string(content))
+	return response.GridModel, nil
 }
 
 func mapPassword(keymap map[string]string, password string) string {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -40,5 +41,15 @@ func main() {
 	err = cl.GetDepositsBalance()
 	if err != nil {
 		log.Fatal("could not get deposits balance:", err)
+	}
+
+	for i := 1; i <= 3; i++ {
+		detail, err := cl.GetSavingsDetail(i)
+		if err != nil {
+			log.Fatal("could not get savings detail:", i, err)
+		}
+		for _, d := range detail {
+			fmt.Println(d.BranchID, d.Amount, d.Date, d.Description, d.OptionalRef)
+		}
 	}
 }
