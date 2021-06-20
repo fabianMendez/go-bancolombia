@@ -5,15 +5,15 @@ var j_lm = ((canary & 0xffffff) == 0xefcafe);
 function BigInteger(a, b, c) {
     if (a != null)
         if ("number" == typeof a) {
-            console.log('a')
+            // console.log('a')
             this.fromNumber(a, b, c);
         }
         else if (b == null && "string" != typeof a) {
-            console.log('b')
+            // console.log('b')
             this.fromString(a, 256);
         }
         else {
-            console.log('c')
+            // console.log('c')
             this.fromString(a, b);
         }
 }
@@ -45,7 +45,11 @@ function am2(i, x, w, j, c, n) {
     return c;
 }
 
+let ok = true
 function am3(i, x, w, j, c, n) {
+    // if (ok) console.log(toGo(this))
+    // const initial = `i: ${i}, x: ${x}, w: &${toGo(w)}, j: ${j}, c: ${c}, n: ${n}`
+
     var xl = x & 0x3fff,
         xh = x >> 14;
     while (--n >= 0) {
@@ -56,6 +60,8 @@ function am3(i, x, w, j, c, n) {
         c = (l >> 28) + (m >> 14) + xh * h;
         w[j++] = l & 0xfffffff;
     }
+    // if (ok) console.log(`{${initial}, expected: ${c}},`)
+    // ok = false
     return c;
 }
 if (j_lm && (navigator.appName == "Microsoft Internet Explorer")) {
@@ -146,7 +152,7 @@ function bnpFromString(s, b) {
             this[this.t++] = (x >> (this.DB - sh));
         } else
             this[this.t - 1] |= x << sh;
-        console.log(this.t)
+        // console.log(this.t)
         sh += k;
         if (sh >= this.DB) sh -= this.DB;
     }
@@ -276,15 +282,28 @@ function bnpLShiftTo(n, r) {
     var ds = Math.floor(n / this.DB),
         c = (this.s << bs) & this.DM,
         i;
+    // console.log({bs,cbs,bm,ds,c,i})
+    // console.log('start')
     for (i = this.t - 1; i >= 0; --i) {
         r[i + ds + 1] = (this[i] >> cbs) | c;
+        // console.log(`[${(this[i] >> cbs) | c}]: ${r[i + ds + 1]}`)
         c = (this[i] & bm) << bs;
+        // console.log(`c: ${c}`)
     }
+    // console.log(r.toString(16))
+    // console.log('end')
     for (i = ds - 1; i >= 0; --i) r[i] = 0;
     r[ds] = c;
     r.t = this.t + ds + 1;
     r.s = this.s;
+    // console.log(r[ds])
+    // console.log(r.t)
+    // console.log(r.s)
+    // console.log('clampstart')
+    // console.log(toGo(r))
     r.clamp();
+    // console.log(toGo(r))
+    // console.log('clampend')
 }
 
 function bnpRShiftTo(n, r) {
@@ -378,6 +397,13 @@ function bnpDivRemTo(m, q, r) {
         return;
     }
     if (r == null) r = nbi();
+    const bi = this
+    // console.log(pm.toString(16))
+    // console.log(pt.toString(16))
+    // console.log(q)
+    // console.log(r.toString(16))
+    // console.log(bi.toString(16))
+    // console.log(m.toString(16))
     var y = nbi(),
         ts = this.s,
         ms = m.s;
@@ -392,6 +418,13 @@ function bnpDivRemTo(m, q, r) {
     var ys = y.t;
     var y0 = y[ys - 1];
     if (y0 == 0) return;
+    // console.log(y.toString(16))
+    // console.log(ts)
+    // console.log(ms)
+    // console.log(nsh)
+    // console.log(r.toString(16))
+    // console.log(ys)
+    // console.log(y0)
     var yt = y0 * (1 << this.F1) + ((ys > 1) ? y[ys - 2] >> this.F2 : 0);
     var d1 = this.FV / yt,
         d2 = (1 << this.F1) / yt,
@@ -404,6 +437,19 @@ function bnpDivRemTo(m, q, r) {
         r[r.t++] = 1;
         r.subTo(t, r);
     }
+    // console.log(yt)
+    // console.log(y0)
+    // console.log(bi.F1)
+    // console.log(ys)
+    // console.log(d1)
+    // console.log(d2)
+    // console.log(e)
+    // console.log(i)
+    // console.log(j)
+    // console.log(y.toString(16))
+    // console.log(y.toString(16))
+    // console.log(t.toString(16))
+    // console.log(r.toString(16))
     BigInteger.ONE.dlShiftTo(ys, t);
     t.subTo(y, y);
     while (y.t < ys) y[y.t++] = 0;
@@ -415,6 +461,10 @@ function bnpDivRemTo(m, q, r) {
             while (r[i] < --qd) r.subTo(t, r);
         }
     }
+    // console.log(t.toString(16))
+    // console.log(y.toString(16))
+    // console.log(r.toString(16))
+    // debugger
     if (q != null) {
         r.drShiftTo(ys, q);
         if (ts != ms) BigInteger.ZERO.subTo(q, q);
@@ -503,6 +553,10 @@ function montRevert(x) {
 function montReduce(x) {
     while (x.t <= this.mt2)
         x[x.t++] = 0;
+
+    // console.log(`newMontgomery(${toGo(this.m)})`)
+    // console.log(toGo(x))
+
     for (var i = 0; i < this.m.t; ++i) {
         var j = x[i] & 0x7fff;
         var u0 = (j * this.mpl + (((j * this.mph + (x[i] >> 15) * this.mpl) & this.um) << 15)) & x.DM;
@@ -516,6 +570,9 @@ function montReduce(x) {
     x.clamp();
     x.drShiftTo(this.m.t, x);
     if (x.compareTo(this.m) >= 0) x.subTo(this.m, x);
+
+    // console.log(toGo(x))
+    // console.log(`=========`)
 }
 
 function montSqrTo(x, r) {
@@ -544,7 +601,17 @@ function bnpExp(e, z) {
         g = z.convert(this),
         i = nbits(e) - 1;
     g.copyTo(r);
+    
+    const bi = this
+
+	// console.log(r.toString(16))
+	// console.log(r2.toString(16))
+	// console.log(bi.toString(16))
+	// console.log(g.toString(16))
+	// console.log(i)
+
     while (--i >= 0) {
+        // console.log(i)
         z.sqrTo(r, r2);
         if ((e & (1 << i)) > 0) z.mulTo(r2, g, r);
         else {
@@ -553,14 +620,26 @@ function bnpExp(e, z) {
             r2 = t;
         }
     }
+    // console.log(r.toString(16))
     return z.revert(r);
 }
 
 function bnModPowInt(e, m) {
     var z;
-    if (e < 256 || m.isEven()) z = new Classic(m);
-    else z = new Montgomery(m);
-    return this.exp(e, z);
+    if (e < 256 || m.isEven()) {
+        // console.log('classic')
+        z = new Classic(m);
+    }
+    else {
+        // console.log('montgomery')
+        z = new Montgomery(m);
+    }
+    // console.log(toGo(this))
+    // console.log(e)
+    // console.log(`montgomery{m: ${toGo(m)}}`)
+    const ret = this.exp(e, z);
+    // console.log(toGo(ret))
+    return ret
 }
 BigInteger.prototype.copyTo = bnpCopyTo;
 BigInteger.prototype.fromInt = bnpFromInt;

@@ -84,7 +84,7 @@ function RSADoPublic(x) {
 }
 
 function RSAEncrypt(text) {
-    console.log(text, (this.n.bitLength() + 7) >> 3)
+    // console.log(text, (this.n.bitLength() + 7) >> 3)
     var m = pkcs1pad2(text, (this.n.bitLength() + 7) >> 3);
     if (m == null) return null;
     var c = this.doPublic(m);
