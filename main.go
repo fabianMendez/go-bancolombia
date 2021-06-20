@@ -38,10 +38,11 @@ func main() {
 
 	defer cl.Logout()
 
-	err = cl.GetDepositsBalance()
+	balance, err := cl.GetDepositsBalance()
 	if err != nil {
 		log.Fatal("could not get deposits balance:", err)
 	}
+	fmt.Printf("%s - %s: (%s) %s\n", balance.ProductName, balance.Number, balance.Currency, balance.AvailableBalance)
 
 	for i := 1; i <= 3; i++ {
 		detail, err := cl.GetSavingsDetail(i)

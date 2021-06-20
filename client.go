@@ -21,7 +21,7 @@ import (
 type Client interface {
 	Login(username, password string) error
 	Logout() error
-	GetDepositsBalance() error
+	GetDepositsBalance() (DepositsBalance, error)
 	GetSavingsDetail(page int) ([]SavingsDetail, error)
 }
 
@@ -576,10 +576,22 @@ func (c *client) Logout() error {
 	return nil
 }
 
-func (c *client) GetDepositsBalance() error {
-	err := c.preGetDepositsBalance()
+type DepositsBalance struct {
+	AccType          string `json:"accType"`
+	AvailableBalance string `json:"availableBalance"`
+	Currency         string `json:"currency"`
+	Description      string `json:"description"`
+	ID               string `json:"id"`
+	NickName         string `json:"nickName"`
+	Number           string `json:"number"`
+	ProductName      string `json:"productName"`
+	Type             string `json:"type"`
+}
+
+func (c *client) GetDepositsBalance() (db DepositsBalance, err error) {
+	err = c.preGetDepositsBalance()
 	if err != nil {
-		return err
+		return
 	}
 	// cst := `UHbyzWG7x0g40Q3DmG4IQ9mEVlHIOE1cp8aXhf9Rgex8%2BnX6g%2Bq3G%2BLyxr4kpwqg`
 	// csrfToken := `1804780420988843334`
@@ -591,7 +603,7 @@ func (c *client) GetDepositsBalance() error {
 
 	req, err := http.NewRequest(http.MethodPost, u, body)
 	if err != nil {
-		return fmt.Errorf("could not create request: %w", err)
+		return db, fmt.Errorf("could not create request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0")
@@ -607,24 +619,37 @@ func (c *client) GetDepositsBalance() error {
 	resp, err := c.httpClient.Do(req)
 	c.log.Println("request sent")
 	if err != nil {
-		return err
+		return db, err
 	}
 
 	c.log.Println("defering body close")
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("request failed: %s", resp.Status)
+		return db, fmt.Errorf("request failed: %s", resp.Status)
 	}
 
-	c.log.Println("reading request")
-	content, err := io.ReadAll(resp.Body)
+	c.log.Println("reading response")
+
+	var response struct {
+		JSON                   string            `json:"JSON"`
+		BanHidenProduct        bool              `json:"banHidenProduct"`
+		ExistFiduciaria        bool              `json:"existFiduciaria"`
+		ExistVirtualInvestment bool              `json:"existVirtualInvestment"`
+		GridModel              []DepositsBalance `json:"gridModel"`
+		Page                   int64             `json:"page"`
+		Records                int64             `json:"records"`
+		Rows                   int64             `json:"rows"`
+		Sord                   string            `json:"sord"`
+		Total                  int64             `json:"total"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return err
+		return db, fmt.Errorf("could not decode response: %w", err)
 	}
 
-	fmt.Println(string(content))
-	return nil
+	return response.GridModel[0], nil
 }
 
 func (c *client) preGetSavingsDetail(step int) error {
@@ -691,11 +716,7 @@ func (c *client) GetSavingsDetail(page int) ([]SavingsDetail, error) {
 		return nil, fmt.Errorf("request failed: %s", resp.Status)
 	}
 
-	c.log.Println("reading request")
-	// content, err := io.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return err
-	// }
+	c.log.Println("reading reponse")
 
 	response := struct {
 		JSON      string          `json:"JSON"`
