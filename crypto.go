@@ -1090,7 +1090,7 @@ var rng_pool []byte
 
 func initRngPool() {
 	if rng_pool == nil {
-		rng_pool = []byte{}
+		rng_pool = make([]byte, 256)
 		rng_pptr = 0
 
 		r := rand.New(rand.NewSource(99))

@@ -59,3 +59,19 @@ func TestDecodeDevicePrint(t *testing.T) {
 
 // 1EDE161732CBEFA
 // 123.456.78.9
+
+func TestMapPassword(t *testing.T) {
+	actual := mapPassword(map[string]string{
+		"0": "lKFE",
+		"1": "UMjS",
+		"2": "974C",
+		"3": "eHd3",
+		"4": "5bG8",
+		"5": "igA6",
+		"6": "YXfV",
+		"7": "WTQa",
+		"8": "ZJDn",
+		"9": "LONk",
+	}, "1234")
+	assert.Equal(t, "UMjS974CeHd35bG8", actual)
+}

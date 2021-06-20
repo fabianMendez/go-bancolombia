@@ -8,6 +8,8 @@ import (
 )
 
 func TestProcessPassword(t *testing.T) {
+	rng_pptr = 0
+	rng_psize = 0
 	rng_pool = make([]byte, 256)
 
 	tests := []struct {
@@ -51,7 +53,10 @@ func TestRsaSetPublic(t *testing.T) {
 }
 
 func TestRsaEncrypt(t *testing.T) {
+	rng_pptr = 0
+	rng_psize = 0
 	rng_pool = make([]byte, 256)
+
 	t1Assertion := "ozzutFJrd0LBW45xy1kS"
 	k := rsaKey{}
 	k.setPublic(
@@ -95,7 +100,10 @@ func TestNBits(t *testing.T) {
 }
 
 func TestPkcs1pad2(t *testing.T) {
+	rng_pptr = 0
+	rng_psize = 0
 	rng_pool = make([]byte, 256)
+
 	actual := pkcs1pad2(`AAAA|ozzutFJrd0LBW45xy1kS`, 256)
 	assert.Equal(t, bigInteger{
 		t: 73, s: 0,

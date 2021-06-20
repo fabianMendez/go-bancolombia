@@ -1,0 +1,84 @@
+
+<HTML>
+<HEAD>
+	
+	
+	
+</HEAD>
+<body>
+	<form id="post-login" method="POST">
+		<input type="hidden" id="tokenM" name="tokenM" value=""/>
+		<input type="hidden" id="code" name="code" value=""/>
+		<input type="hidden" name="CSRF_TOKEN" value="6530323949081950407" id="CSRF_TOKEN"/>
+		<input type="hidden" name="cst" value="6530323949081950407" id="cst"/>
+	</form>
+
+
+	<script type="text/javascript">
+		var urlRedirect = '';
+		var tokenMua='';
+		var codeRedirect='';
+		var isRedirectMua=false;
+        if(window.parent.setPageUnloadHandledFlag){
+            window.parent.setPageUnloadHandledFlag();
+        }
+		String.prototype.includes = function (str) {
+		  var returnValue = false;
+		  if (this.indexOf(str) !== -1) {
+			returnValue = true;
+		  }
+		  return returnValue;
+		}
+		
+		function  processRedirectInvalidateSession(url,myTokenMua,codeParam){
+			url = filterUrl(url);
+			if(isRedirectMua){
+				window.parent.location.replace(url);
+			}else if(codeParam === '1000'){
+				var urlAuxCode=url+'?code=1000';
+				urlAuxCode = filterUrl(urlAuxCode);
+				window.parent.location.replace(urlAuxCode);
+			}
+			else{
+				document.getElementById("tokenM").value = myTokenMua;
+				document.getElementById("code").value = codeParam;
+				var form = document.getElementById("post-login");
+				form.action = url;
+				form.submit();
+			}
+		}
+		
+		function filterUrl(url){
+			var qst = "?";
+			var semCol = ";";
+			if(url.indexOf(semCol) >= 0) {
+				var url2 = url.substring(0, url.indexOf(semCol));
+				if(url.includes(qst))
+					url = url2 + url.substring(url.indexOf(qst));
+				else
+					url = url2;
+			}
+			return url;
+		}
+
+	</script>
+	
+
+
+
+
+	
+	
+	
+	
+		
+	
+	<script type="text/javascript">
+        urlRedirect = '/cb/pages/jsp-ns/login-mada.jsp';
+		tokenMua='gt9Evelcvl9yQeulJn8MGyvH3Sr6FcKNnmtAwEyW/CU0DE9O96EqxgxtTJtjzr0EIQ2IFD37maPMhVNw5Lh2Z4glHUe0MR+lXTtTCUj8dN/uJCgggsnJSfPyuYbPs45/GtnSwIKlI8k9EWk4C4/ZKRBE+3Ny5KcWFHZJEvVjS8bC67HObBGzks7E5Iv7lqg2pzQxhbjFzG6dcDqTCZQ8GgA6ZUf/HTef75ya8JVOGee2dON3CJIzs5Y2fQ++DKKykVdY22wOUo2Vt6ohGH0A6vZhsnML/xtk5pKkEqWnXjwdEQ56wwfT+rUdKNiLzjKEC4ZpSVTheppdIL2nY4A0tCqnZaRn9LS7/FTTRPa1t8U1NfnSbFjii61ZowCMKbluRdIc9FSBT0pieYSi18h6CFTLieVVG8ly6mRiVN9GKm5nKGh1YOYRZrHRXIV4EkQAHbu9bP7QuP9Pyp1X6+3RLd2AEukvHa99xEpl35ossCnlLIzNeXzIkCr7iJqhV7eIpWOCSC+HSfuWD0O/l4RA0OAsNi+yjuK33ssbZLbYQIDWWXVqdMNyoi58kp4IGuDsHlCnPxqu4Czrf1LRD03S0UX16GDRraQNy6tgvEv/piucQVNL3CqPptnytkkP45g8fnMxoew6wMpIaaFSCCwP1mVTcPnyP8sy6MzqqHDbjZTH6nX2p+qwh922uf/0zD4LVwXTaaLQkGLQRZsBN0PpaB5xPYMpFKd9WWVnviFqkNKsymRsW09KiTWNJ6lIie90LvE5j+ZDDEKBJi/sZ1kO8Lmr1fDTjhEmhjEgSa2XBQL4Puvt2NTDwNm5tHz1lJLQWMZAw2vbq7kDuiQ02S5PlLEJgCxk6OMPQQm2pnOqxxj62UqPDLHACg6ZO6enqTX4bS4UCR/xZaiHcNmvMlZ50YINqVAk31claSfl4KZRnKGfQIUYfOHY3Wm66bHkJlQrood1ql/7MoRidkdVqILQdBh2aA8W+fK9jo2fvtCHyESkc3JBi8cZi0AyYJeJTq0n5ifFj2bebQOSUPHh2pOXU8P9OxsMG9SoapO5YSUdkVoyaMhqzVRCSasfFijV4NToAXgUu+6mvtHh/AnQ1I1ImclMMA4oiQdBXNL/GYpSxynfa+yArzRJWs24tlVI6wfgwLGV2x7aZSuWpyuiousQi2wsCjCoHpp45bApIf11Y8l9U+OkkrpdUqHeUODi5SOfJnEmyQKEWQPhmB8P/Aueu91SNuifOh16AayBjxWGDblIEnFJgto+TrTYZIEtcSgW0RChmZEyPyT/m8PaQPxLrXsRWl4LlUg5uGpSdDNTVZO7dQm8JtJ27kLXI2nqV6kIk+K1pC6Tr0yzrXzsskz5hjWi/oru55H3sz3GD3zcFxkRc9kN//POpl1g9ABwg3DcwRxkMtVrmAhh8ycA2TM+UndHC8Zing+6RJgt37ZsZ3onbgGlq6p1J3l/wMDgj/xebnJt83hH/VF9wow8Yt+NIUf4YbM=';
+		codeRedirect='null';
+		processRedirectInvalidateSession(urlRedirect,tokenMua,codeRedirect);
+	</script>
+
+</body>
+</HTML>

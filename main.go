@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+
 	// "os"
 
 	"github.com/joho/godotenv"
@@ -33,8 +34,11 @@ func main() {
 	if err != nil {
 		log.Fatal("could not login:", err)
 	}
-	// err = cl.GetDepositsBalance()
-	// if err != nil {
-	// 	log.Fatal("could not login:", err)
-	// }
+
+	defer cl.Logout()
+
+	err = cl.GetDepositsBalance()
+	if err != nil {
+		log.Fatal("could not get deposits balance:", err)
+	}
 }

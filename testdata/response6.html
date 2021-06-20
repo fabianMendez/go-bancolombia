@@ -1,0 +1,144 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+	<head>
+				
+
+
+              <script type="text/javascript">
+	              var keyname = '171111101009000';
+	              window.dataLayer= window.dataLayer || [];
+	              window.dataLayer.push({'event':'SEND_USERID','userId':keyname});      
+              </script>
+              <script type="text/javascript">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer',"GTM-KFWRD89");</script>
+ 
+		<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"/>
+		<title>Bancolombia Sucursal Virtual Personas</title>
+		<link type="image/x-icon" rel="shortcut icon" href="../../../web/css/Bancolombia/images/bancolombia.ico?version=%{#session.projectVersion}" />
+		<style type="text/css">
+		   html, body, div,iframe{ margin:0; padding:0; height:100%; }
+		   iframe { display:block; width:100%;}
+		   .sessionNotificationDiv{height: 20px; width:100%; display:none; text-align:center; 
+		   		font: 400; font-size: 12px;  font-family: Verdana,Arial,Helvetica,sans-serif;}   
+		</style>
+		
+		
+		
+		<link type="text/css" rel="stylesheet"  media="all" href="/cb/web/css/showLoadingBank.css"/>
+		
+
+
+
+
+	<script type="text/javascript" src="/cb/struts/js/base/jquery-1.7.1.min.js"></script>
+  <script type="text/javascript" src="/cb/struts/js/plugins/jquery.subscribe.min.js"></script>
+
+  <script type="text/javascript" src="/cb/struts/js/struts2/jquery.struts2-3.3.0.min.js"></script>
+
+<script type="text/javascript">
+$(function() {
+	jQuery.struts2_jquery.version="3.3.0";
+  	jQuery.scriptPath = "/cb/struts/";
+	jQuery.struts2_jquery.defaults.indicator="indicator";
+	jQuery.ajaxSettings.traditional = true;
+
+	jQuery.ajaxSetup ({
+		cache: false
+	});
+	
+	
+});
+</script>
+
+
+		<link rel="stylesheet" href="/cb/web/css/Consumer/jquery-ui.css" type="text/css"></link>
+		<script src="/cb/web/js/showLoadingBank.js"></script>
+		
+		
+		
+		
+		<script type="text/javascript" src="/cb/web/js/jquery.history.js"></script>
+		<script type="text/javascript" src="/cb/web/js/jquery.i18n.properties.js "></script>
+		<script type="text/javascript">
+		function getCstParam(){
+			return 'cst=A%2BCfdsj9tJ2aCxHoQFFGAmYGRYWBTPX2hsWlYdZ0AM8OqnP4UG0TUMeCOiE3PXz3';
+		}
+			var windowTitle="";
+			$(document).ready(function() {
+				
+				jQuery.i18n.properties({
+					name: 'MainPageJavaScript',
+					path:'/cb/web/js/i18n/',
+					mode:'both',
+					language: 'en_US',
+					cache:true,
+					callback: function(){
+					}
+				});
+				/* Window title */
+				windowTitle = 'Bancolombia Sucursal Virtual Personas';
+			
+			});
+			
+			function deshasbilitar()
+			{
+				
+					
+				   window.location.hash="no-back-button";
+					
+				   window.location.hash="Again-No-back-button" //chrome
+					
+				   window.onhashchange=function(){window.location.hash="no-back-button";}
+					
+
+			}
+			/* Text to be shown in java script alert pop-up, while navigating away from page.*/
+			var logoutPopupText = 'Usted está saliendo de la Sucursal Virtual Personas Bancolombia. Si continúa, automáticamente se cerrará su sesión.';
+					
+			/* URL required to log out user.*/
+			var logoutUrl = '/cb/pages/jsp/invalidate-session.jsp';
+		</script>
+		
+		
+<script type="text/javascript" src="/cb/web/js/common/handleHistory.js"></script>		
+		
+<script type="text/javascript" src="/cb/web/js/common/userNavigateAwayCheck.js"></script>		
+		<script type="text/javascript">
+			/* Set start page used to maintain start page after login by handlehistory.js */
+			var startingPage = '';
+		</script>	
+    </head>
+		<body style="overflow:hidden;" onload='deshasbilitar();'>
+				
+       <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KFWRD89"
+       height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+ 
+		<div>
+			<div id="sessionNotificationMsgDiv" class="ui-state-highlight sessionNotificationDiv"></div>
+			<iframe id="ifrm" name="ifrm" src='index.jsp' 
+			 width="100%" height="100%" frameborder="0"></iframe>
+		</div>
+		
+</body>
+
+	<script type="text/javascript">
+	/* Show loading image so that User will get feel of something is happening.*/
+	var intervalId = '';
+	/* $("#dvLoadingBank").show(); */
+	$('#ifrm').showLoading();
+	
+	/* Function to check if window loading is shown in the Iframe window.
+	 If so, then stop showing loading in mainPage.jsp.
+	*/
+	
+	/* Function to hide loading symbol once default loading period is over.*/
+	function hideMainPageLoading(){
+		/* $("#dvLoadingBank").hide(); */
+		jQuery('#ifrm').hideLoading();
+	}
+	</script>
+</html>
