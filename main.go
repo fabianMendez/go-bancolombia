@@ -44,8 +44,8 @@ func main() {
 	}
 	fmt.Printf("%s - %s: (%s) %s\n", balance.ProductName, balance.Number, balance.Currency, balance.AvailableBalance)
 
-	for i := 1; i <= 3; i++ {
-		detail, err := cl.GetSavingsDetail(i)
+	for i := 1; i <= 6; i++ {
+		detail, err := cl.GetSavingsDetail(i % 3)
 		if err != nil {
 			log.Fatal("could not get savings detail:", i, err)
 		}

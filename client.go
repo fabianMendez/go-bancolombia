@@ -26,11 +26,13 @@ type Client interface {
 }
 
 type client struct {
-	httpClient *http.Client
-	log        *log.Logger
-	baseURL    string
-	cst        string
-	csrfToken  string
+	httpClient       *http.Client
+	log              *log.Logger
+	baseURL          string
+	aditionalHeaders map[string]string
+	refererURL       string
+	cst              string
+	csrfToken        string
 }
 
 func NewClient() (Client, error) {
@@ -58,18 +60,127 @@ func NewClient() (Client, error) {
 	}
 	httpClient.Jar = jar
 
+	nullf, err := os.Open("/dev/null")
+	if err != nil {
+		return nil, err
+	}
+	l := log.New(nullf, "", log.LstdFlags)
+	// l := log.Default()
+
 	return &client{
 		httpClient: httpClient,
-		log:        log.Default(),
+		log:        l,
 		baseURL:    `https://sucursalpersonas.transaccionesbancolombia.com`,
+		aditionalHeaders: map[string]string{
+			"User-Agent":       "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0",
+			"X-Requested-With": "XMLHttpRequest",
+			// req.Header.Set("Accept", "*")
+			// req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+			// req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			// req.Header.Set("Origin", c.baseURL)
+			// req.Header.Set("Referer", c.baseURL+"/cb/pages/jsp/home/index.jsp")
+		},
 	}, nil
 }
 func (c *client) updateCsrfToken(doc *html.Node) {
 	csrfToken := parseCsrfToken(doc)
 	if csrfToken != "" {
-		fmt.Println("CSRF =>", csrfToken)
+		c.log.Println("CSRF =>", csrfToken)
 		c.csrfToken = csrfToken
 	}
+}
+
+func (c *client) updateCstParam(doc *html.Node) {
+	cstParam := parseCstParam(doc)
+	if cstParam != "" {
+		c.log.Println("CST =>", cstParam)
+		c.cst = cstParam
+	}
+}
+
+func (c *client) get(u string) (*http.Response, error) {
+	return c.request(http.MethodGet, u, nil)
+}
+
+func (c *client) postForm(u string, data url.Values) (*http.Response, error) {
+	return c.requestWithHeaders(http.MethodPost, u, strings.NewReader(data.Encode()), map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+}
+
+func (c *client) request(method, u string, body io.Reader) (*http.Response, error) {
+	return c.requestWithHeaders(method, u, body, nil)
+}
+
+func (c *client) requestWithHeaders(method, u string, body io.Reader, headers map[string]string) (*http.Response, error) {
+	req, err := http.NewRequest(method, u, body)
+	if err != nil {
+		return nil, fmt.Errorf("could not create request: %w", err)
+	}
+
+	for headerKey, headerValue := range c.aditionalHeaders {
+		req.Header.Add(headerKey, headerValue)
+	}
+
+	for headerKey, headerValue := range headers {
+		req.Header.Add(headerKey, headerValue)
+	}
+
+	c.log.Println("sending request")
+	resp, err := c.httpClient.Do(req)
+	c.log.Println("request sent")
+	if err != nil {
+		return nil, fmt.Errorf("could not send request: %w", err)
+	}
+
+	refererURL := resp.Request.URL.String()
+	if refererURL != "" {
+		c.refererURL = refererURL
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed: %s", resp.Status)
+	}
+
+	return resp, nil
+}
+
+func (c *client) requestJSON(method, u string, body io.Reader, v interface{}) error {
+	return c.requestJSONWithHeaders(method, u, body, v, nil)
+}
+
+func (c *client) requestJSONWithHeaders(method, u string, body io.Reader, v interface{}, headers map[string]string) error {
+	resp, err := c.requestWithHeaders(method, u, body, headers)
+	if err != nil {
+		return err
+	}
+	c.log.Println("defering body close")
+	defer resp.Body.Close()
+
+	c.log.Println("reading reponse")
+	err = json.NewDecoder(resp.Body).Decode(v)
+	if err != nil {
+		return fmt.Errorf("could not decode response: %w", err)
+	}
+
+	return nil
+}
+
+func (c *client) loadHTML(resp *http.Response, err error) (*html.Node, error) {
+	if err != nil {
+		return nil, err
+	}
+	c.log.Println("defering body close")
+	defer resp.Body.Close()
+
+	c.log.Println("reading reponse")
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse html: %w", err)
+	}
+
+	c.updateCsrfToken(doc)
+	c.updateCstParam(doc)
+
+	return doc, nil
 }
 
 func (c *client) Login(username, password string) error {
@@ -80,20 +191,11 @@ func (c *client) Login(username, password string) error {
 	uievent := ""
 
 	u := fmt.Sprintf(`%s/mua/initAuthProcess`, c.baseURL)
-	resp, err := c.httpClient.Get(u)
+	doc, err := c.loadHTML(c.get(u))
 	if err != nil {
 		return fmt.Errorf("could not init auth process: %w", err)
 	}
 
-	// c.log.Println("defering body close")
-	defer resp.Body.Close()
-
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-
-	c.updateCsrfToken(doc)
 	loginUserForm := getElementByID(doc, "loginUserForm")
 	if loginUserForm == nil {
 		return fmt.Errorf("could not find login user form: %w", err)
@@ -110,23 +212,11 @@ func (c *client) Login(username, password string) error {
 		"uievent":      []string{uievent},
 	}
 
-	resp, err = c.httpClient.PostForm(c.baseURL+action, values)
+	doc, err = c.loadHTML(c.postForm(c.baseURL+action, values))
 	if err != nil {
 		return fmt.Errorf("could not submit loginUserForm: %w", err)
 	}
 
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error submitting loginUserForm: %s", resp.Status)
-	}
-
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-
-	c.updateCsrfToken(doc)
 	loginUserForm = getElementByID(doc, "loginUserForm")
 	if loginUserForm == nil {
 		return fmt.Errorf("could not find login user form: %w", err)
@@ -160,212 +250,112 @@ func (c *client) Login(username, password string) error {
 		"pgid":         []string{pgid},
 		"uievent":      []string{uievent},
 	}
-	resp, err = c.httpClient.PostForm(c.baseURL+action, values)
+	doc, err = c.loadHTML(c.postForm(c.baseURL+action, values))
 	if err != nil {
 		return fmt.Errorf("could not submit loginUserForm: %w", err)
 	}
-	defer resp.Body.Close()
 
-	// fmt.Println(resp.StatusCode)
-	// io.Copy(os.Stdout, resp.Body)
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "post-return")
+	resp, err := c.submitForm(doc, "post-return")
 	if err != nil {
 		return fmt.Errorf("could not submit post-return form: %w", err)
 	}
 
-	defer resp.Body.Close()
-	io.Copy(os.Stdout, resp.Body)
+	_ = resp.Body.Close()
+	// io.Copy(os.Stdout, resp.Body)
 
-	resp, err = c.httpClient.Get(c.baseURL + "/mua/CONTINUE_SM")
+	doc, err = c.loadHTML(c.get(c.baseURL + "/mua/CONTINUE_SM"))
 	if err != nil {
 		return fmt.Errorf("could not submit request: %w", err)
 	}
-	defer resp.Body.Close()
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "post-return")
+
+	doc, err = c.loadHTML(c.submitForm(doc, "post-return"))
 	if err != nil {
 		return fmt.Errorf("could not submit post-return form: %w", err)
 	}
-	defer resp.Body.Close()
-	// io.Copy(os.Stdout, resp.Body)
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
 
-	c.updateCsrfToken(doc)
 	action = parseUrlRedirect(doc)
 	action = filterUrl(action)
 	tokenM := parseTokenMua(doc)
 	code := parseCodeRedirect(doc)
-	resp, err = c.submitFormValues(doc, resp.Request.URL.String(), "post-login", action, url.Values{
+	doc, err = c.loadHTML(c.submitFormValues(doc, "post-login", action, url.Values{
 		"tokenM": []string{tokenM},
 		"code":   []string{code},
-	})
+	}))
 	if err != nil {
 		return fmt.Errorf("could not submit post-login form: %w", err)
 	}
-	defer resp.Body.Close()
-	// io.Copy(os.Stdout, resp.Body)
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
 
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "post-link-mada")
+	doc, err = c.loadHTML(c.submitForm(doc, "post-link-mada"))
 	if err != nil {
 		return fmt.Errorf("could not submit post-link-mada form: %w", err)
 	}
-	defer resp.Body.Close()
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "post-link-index")
+
+	doc, err = c.loadHTML(c.submitForm(doc, "post-link-index"))
 	if err != nil {
 		return fmt.Errorf("could not submit post-link-index form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	//post-login
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "post-login")
+	doc, err = c.loadHTML(c.submitForm(doc, "post-login"))
 	if err != nil {
 		return fmt.Errorf("could not submit post-login form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	//invocacion
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "invocacion")
+	doc, err = c.loadHTML(c.submitForm(doc, "invocacion"))
 	if err != nil {
 		return fmt.Errorf("could not submit invocacion form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	//validateUser
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "validateUser")
+	doc, err = c.loadHTML(c.submitForm(doc, "validateUser"))
 	if err != nil {
 		return fmt.Errorf("could not submit validateUser form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	//loginSimulateFormID
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "loginSimulateFormID")
+	doc, err = c.loadHTML(c.submitForm(doc, "loginSimulateFormID"))
 	if err != nil {
 		return fmt.Errorf("could not submit loginSimulateFormID form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	// loginForm
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "loginForm")
+	doc, err = c.loadHTML(c.submitForm(doc, "loginForm"))
 	if err != nil {
 		return fmt.Errorf("could not submit loginForm form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	// loginForm1
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse html document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	resp, err = c.submitForm(doc, resp.Request.URL.String(), "loginForm1")
+	doc, err = c.loadHTML(c.submitForm(doc, "loginForm1"))
 	if err != nil {
 		return fmt.Errorf("could not submit loginForm1 form: %w", err)
 	}
-	defer resp.Body.Close()
 
-	// mainPage
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse login-init document: %w", err)
-	}
-	c.updateCsrfToken(doc)
-	action, err = c.buildAction(resp.Request.URL.String(), parseLocationReplace(doc))
+	action, err = c.buildAction(parseLocationReplace(doc))
 	if err != nil {
 		return err
 	}
-	resp, err = c.httpClient.Get(action)
+
+	_, err = c.loadHTML(c.get(action))
 	if err != nil {
 		return fmt.Errorf("could not load mainPage: %w", err)
 	}
-	defer resp.Body.Close()
 
-	// index
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse mainPage document: %w", err)
-	}
-
-	c.updateCsrfToken(doc)
-	c.cst = parseCstParam(doc)
-	fmt.Println("cstParam1:", c.cst)
-
-	action, err = c.buildAction(resp.Request.URL.String(), "index.jsp")
+	action, err = c.buildAction("index.jsp")
 	if err != nil {
 		return err
 	}
-	resp, err = c.httpClient.Get(action)
+
+	_, err = c.loadHTML(c.get(action))
 	if err != nil {
 		return fmt.Errorf("could not load mainPage: %w", err)
 	}
-	defer resp.Body.Close()
-
-	doc, err = html.Parse(resp.Body)
-	if err != nil {
-		return fmt.Errorf("could not parse index document: %w", err)
-	}
-
-	c.updateCsrfToken(doc)
-	c.cst = parseCstParam(doc)
-	fmt.Println("cstParam2:", c.cst)
 
 	return nil
 }
 
-func (c *client) buildAction(baseURL, action string) (string, error) {
-	fmt.Println(baseURL)
+func (c *client) buildAction(action string) (string, error) {
+	c.log.Println(c.refererURL)
 	if !strings.HasPrefix(action, "http://") && !strings.HasPrefix(action, "https://") {
 		if strings.HasPrefix(action, "/") {
 			return c.baseURL + action, nil
 		}
 
-		parent := baseURL[:strings.LastIndex(baseURL, "/")]
+		parent := c.refererURL[:strings.LastIndex(c.refererURL, "/")]
 		return parent + "/" + action, nil
 	}
 
@@ -376,7 +366,7 @@ func (c *client) buildAction(baseURL, action string) (string, error) {
 	return actionurl.String(), nil
 }
 
-func (c *client) submitForm(doc *html.Node, baseURL, id string) (*http.Response, error) {
+func (c *client) submitForm(doc *html.Node, id string) (*http.Response, error) {
 	form := getElementByID(doc, id)
 	if form == nil {
 		html.Render(os.Stderr, doc)
@@ -398,20 +388,20 @@ func (c *client) submitForm(doc *html.Node, baseURL, id string) (*http.Response,
 		return nil, fmt.Errorf("form not found: %s", id)
 	}
 	action := getAttribute(form, "action")
-	return c.submitFormValues(doc, baseURL, id, action, nil)
+	return c.submitFormValues(doc, id, action, nil)
 }
 
-func (c *client) submitFormValues(doc *html.Node, baseURL, id, action string, values url.Values) (*http.Response, error) {
+func (c *client) submitFormValues(doc *html.Node, id, action string, values url.Values) (*http.Response, error) {
 	form := getElementByID(doc, id)
 	fields := parseFormFields(form)
 	replaceValues(fields, values)
 
-	u, err := c.buildAction(baseURL, action)
+	u, err := c.buildAction(action)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.httpClient.PostForm(u, fields)
+	return c.postForm(u, fields)
 }
 
 func escape(s string) string {
@@ -447,6 +437,7 @@ func (c *client) cstUrl(u string) string {
 	return u + "?" + param
 }
 
+/*
 func (c *client) postAjax(endpoint string) error {
 	return c.postAjaxValues(endpoint, url.Values{})
 }
@@ -473,106 +464,24 @@ func (c *client) postAjaxValues(endpoint string, values url.Values) error {
 
 	return nil
 }
+*/
 
 func (c *client) preGetDepositsBalance() error {
-	var err error
-
-	/*
-		err = c.postAjax(c.cstUrl("/cb/pages/jsp-ns/olb/ChangeNameACHDataEntry"))
-		if err != nil {
-			return err
-		}
-
-		err = c.postAjax(c.cstUrl("/cb/pages/jsp-ns/olb/PersonalizeProductsNameDataEntry"))
-		if err != nil {
-			return err
-		}
-
-		err = c.postAjax("/cb/pages/jsp-ns/olb/UsersPreferencesAction")
-		if err != nil {
-			return err
-		}
-
-		err = c.postAjax("/cb/pages/jsp/updateData/getUpdateDynamicData.action")
-		if err != nil {
-			return err
-		}
-
-		err = c.postAjax(c.cstUrl("/cb/pages/jsp-ns/olb/PreApprovedAction"))
-		if err != nil {
-			return err
-		}
-	*/
-
-	/*
-		err = c.postAjaxValues("/cb/pages/jsp/ga/GATokenGeneration.action", url.Values{
-			"id_ga":    []string{"anuncio-0"},
-			"timeZone": []string{"GMT-0500"},
-		})
-		if err != nil {
-			return err
-		}
-	*/
-
-	// falta agregarle el parámetro _={timestamp}
-	_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/pages/jsp-ns/olb/InitAccountSummary?redirect=ALLACCOUNTS_HOME&type=ALLACCOUNTS_HOME"))
+	resp, err := c.request(http.MethodGet, c.baseURL+c.cstUrl("/cb/pages/jsp-ns/olb/InitAccountSummary?redirect=ALLACCOUNTS_HOME&type=ALLACCOUNTS_HOME"), nil)
 	if err != nil {
 		return err
 	}
-
-	/*
-		err = c.postAjaxValues("/cb/pages/jsp/ga/GATokenGeneration.action", url.Values{
-			"id_ga":    []string{"anuncio-0"},
-			"timeZone": []string{"GMT-0500"},
-		})
-		if err != nil {
-			return err
-		}
-	*/
-
-	/*
-		// falta agregarle el parámetro _={timestamp}
-		_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/web/js/account/account_grid_bancolombia.js?version=3.2.1.RC1"))
-		if err != nil {
-			return err
-		}
-
-		// falta agregarle el parámetro _={timestamp}
-		_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/web/js/landing_grid.js?version=3.2.1.RC1"))
-		if err != nil {
-			return err
-		}
-
-		// falta agregarle el parámetro _={timestamp}
-		_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/web/js/datePicker/datePicker.js?version=3.2.1.RC1"))
-		if err != nil {
-			return err
-		}
-
-		// falta agregarle el parámetro _={timestamp}
-		_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/web/js/account/account_grid_cards_credits.js?version=3.2.1.RC1"))
-		if err != nil {
-			return err
-		}
-	*/
-
-	// err = c.postAjaxValues("/cb/pages/jsp/account/getDepositsBalanceBancolombiaHome.action", url.Values{
-	// 	"id_ga":    []string{"anuncio-0"},
-	// 	"timeZone": []string{"GMT-0500"},
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-
+	_ = resp.Body.Close()
 	return nil
+
 }
 
 func (c *client) Logout() error {
-	var err error
-	_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/pages/jsp-ns/olb/SafeExit"))
+	resp, err := c.request(http.MethodGet, c.baseURL+c.cstUrl("/cb/pages/jsp-ns/olb/SafeExit"), nil)
 	if err != nil {
 		return err
 	}
+	_ = resp.Body.Close()
 	return nil
 }
 
@@ -593,43 +502,10 @@ func (c *client) GetDepositsBalance() (db DepositsBalance, err error) {
 	if err != nil {
 		return
 	}
-	// cst := `UHbyzWG7x0g40Q3DmG4IQ9mEVlHIOE1cp8aXhf9Rgex8%2BnX6g%2Bq3G%2BLyxr4kpwqg`
-	// csrfToken := `1804780420988843334`
-	// cookie := `JSESSIONID=0RxB7Vd23fc-lHnZrKZEVGfF; PREFS="X9RLQLaAmqHW8JqmdTMTk0MFBxw="; NSC_JOr2zhh2e44kdkqd4uupeqdgxr1z1c0=4150a3cb0364cd0d3ea8dab25b436be0cee4445a7e513fa4949b4998994b0c64f398c052; __cflb=02DiuF7aX6zsQEVJrpLGtHaWFTk3VhwPwDGH9EUtDMv7v; UUID=354673ff5f6608abc152664feaab0e5b; SMCHALLENGE=SSL_CHALLENGE_DONE; SMTEXT=SUCCESS; SMSESSION=kQX5V5f0dC3PJyq6Snj1zQrp9anupBACjGhYWFnV9TNmBqmZEI/j8MHL/BLv8xPLlvplHBrIN3YXSlkKyFpj7wer0825qFF63+PgTl567Q7u31whmM2NmXGXilnbuzeg5cAvmF1uzS/4XzvEdtG8xJRbqqh9WULVinssUTJWFEWI4LfGK0hShiLMHiCbLXV4TNc9Y/IWor8iZjA2Qd33Z21qktMGKCNSNfy4lc1W/NDhqierf+7QmMS0en9YbV7ygUXAAUxt6HGjsPPCij8/AoE1s14CPYgEm7MY+7e4XJANLYs6B+o5a7xkn4e+R353mdGOG/dCQCIB0ejvjD9SkZcppQf1y3gHoSykaCpXuoh4YYKvJI5Bk9B9nUR1R4tfAUgVQqOVaBf2T5mmHAf1ydO6+lPspNzwjI/QG2kn9EPG3QRqwrLYdHLJUDKOHxs93X50tM+I7M1/HvBP7wS3RnKsDvoYZhvaQYboBTQtXTs2r2FrIudtHBAEfdHe6VdPS2ECUf38FF/cXtMVHGcPb4+MWTQ8urisrYTKGf9alDP94VuFUrjqDPqd6DRwMOvT7XE8QFmCqeXF7S55Ii/f0//lYoeN9ivNQAFkwyxLSD0qMDH0QIcRBP80vDFehWwxu5/Jnnl//AtvsvRZn+9X7brcVtH8M93nw3wFgSqJm88SsU8aYusaiGkd1jk7CymJ8PKiFwHOYujeQU9pYsyoRMW+JHe2nVCLChWxQvGQ89aL89pz0CRKFc6spdDPP3X0Dslw9W9dCsCUuVORZ0YGNdIG0dg0QoALrWQkTskWMmXtvJgX9octZjn0tkf6yydymErZjUCwxtJCAaq/ygCi2Ifnd6rxs8Rza6IlG63NWJSZ+Xy4b+okNIaF5L2CCx8ytzBgIdb0LAzFWS2dE+giZJ6nX77dpNDFRwMn0uB/y2ez4XIbXzeHj+3bHxZk87y2Y01MvMmLPTbsPFzSj2bv1LTuHY1XPV2W; T1_OLBP_COOKIE=""`
 
 	u := fmt.Sprintf(`%s/cb/pages/jsp/account/getDepositsBalanceBancolombiaHome.action?cst=%s`, c.baseURL, c.cst)
 	bodyStr := fmt.Sprintf(`type=DEPOSITS&CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
 	body := strings.NewReader(bodyStr)
-
-	req, err := http.NewRequest(http.MethodPost, u, body)
-	if err != nil {
-		return db, fmt.Errorf("could not create request: %w", err)
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0")
-	req.Header.Set("Accept", "*")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	req.Header.Set("Origin", c.baseURL)
-	req.Header.Set("Referer", c.baseURL+"/cb/pages/jsp/home/index.jsp")
-	// req.Header.Set("Cookie", cookie)
-
-	c.log.Println("sending request")
-	resp, err := c.httpClient.Do(req)
-	c.log.Println("request sent")
-	if err != nil {
-		return db, err
-	}
-
-	c.log.Println("defering body close")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return db, fmt.Errorf("request failed: %s", resp.Status)
-	}
-
-	c.log.Println("reading response")
 
 	var response struct {
 		JSON                   string            `json:"JSON"`
@@ -644,25 +520,27 @@ func (c *client) GetDepositsBalance() (db DepositsBalance, err error) {
 		Total                  int64             `json:"total"`
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&response)
+	err = c.requestJSONWithHeaders(http.MethodPost, u, body, &response, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
-		return db, fmt.Errorf("could not decode response: %w", err)
+		return db, err
 	}
 
 	return response.GridModel[0], nil
 }
 
 func (c *client) preGetSavingsDetail(step int) error {
-	var err error
-
+	var u string
 	if step == 1 {
-		_, err = c.httpClient.Get(c.baseURL + c.cstUrl("/cb/pages/jsp-ns/olb/ACCTARGETQuery?entity=MOVCA&fwviejoId=CA_22542427103650&operation=MOVCA&clean=true"))
+		u = c.baseURL + c.cstUrl("/cb/pages/jsp-ns/olb/ACCTARGETQuery?entity=MOVCA&fwviejoId=CA_22542427103650&operation=MOVCA&clean=true")
 	} else {
-		_, err = c.httpClient.Get(c.baseURL + c.cstUrl(fmt.Sprintf("/cb/pages/jsp-ns/olb/AccountDetailAsset?&step=%d&open=Y", step)))
+		u = c.baseURL + c.cstUrl(fmt.Sprintf("/cb/pages/jsp-ns/olb/AccountDetailAsset?&step=%d&open=Y", step))
 	}
+
+	resp, err := c.request(http.MethodGet, u, nil)
 	if err != nil {
 		return err
 	}
+	_ = resp.Body.Close()
 
 	return nil
 }
@@ -688,37 +566,7 @@ func (c *client) GetSavingsDetail(page int) ([]SavingsDetail, error) {
 	bodyStr := fmt.Sprintf(`_search=false&nd=%s&rows=-1&page=1&sidx=date&sord=desc`, nd)
 	body := strings.NewReader(bodyStr)
 
-	req, err := http.NewRequest(http.MethodPost, u, body)
-	if err != nil {
-		return nil, fmt.Errorf("could not create request: %w", err)
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0")
-	req.Header.Set("Accept", "*")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	req.Header.Set("Origin", c.baseURL)
-	req.Header.Set("Referer", c.baseURL+"/cb/pages/jsp/home/index.jsp")
-	// req.Header.Set("Cookie", cookie)
-
-	c.log.Println("sending request")
-	resp, err := c.httpClient.Do(req)
-	c.log.Println("request sent")
-	if err != nil {
-		return nil, err
-	}
-
-	c.log.Println("defering body close")
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed: %s", resp.Status)
-	}
-
-	c.log.Println("reading reponse")
-
-	response := struct {
+	var response struct {
 		JSON      string          `json:"JSON"`
 		GridModel []SavingsDetail `json:"gridModel"`
 		Page      int64           `json:"page"`
@@ -727,14 +575,13 @@ func (c *client) GetSavingsDetail(page int) ([]SavingsDetail, error) {
 		Sidx      string          `json:"sidx"`
 		Sord      string          `json:"sord"`
 		Total     int64           `json:"total"`
-	}{}
-
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	if err != nil {
-		return nil, fmt.Errorf("could not decode response: %w", err)
 	}
 
-	// fmt.Println(string(content))
+	err = c.requestJSON(http.MethodPost, u, body, &response)
+	if err != nil {
+		return nil, err
+	}
+
 	return response.GridModel, nil
 }
 
