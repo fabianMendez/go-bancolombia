@@ -1,0 +1,13 @@
+name: Run
+on:
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      AUTH_USER: ${{ secrets.AUTH_USER }}
+      AUTH_PASS: ${{ secrets.AUTH_PASS }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+      - run: go run .
