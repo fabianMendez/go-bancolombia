@@ -497,10 +497,10 @@ type DepositsBalance struct {
 	Type             string `json:"type"`
 }
 
-func (c *client) GetDepositsBalance() (db DepositsBalance, err error) {
-	err = c.preGetDepositsBalance()
+func (c *client) GetDepositsBalance() (DepositsBalance, error) {
+	err := c.preGetDepositsBalance()
 	if err != nil {
-		return
+		return DepositsBalance{}, err
 	}
 
 	u := fmt.Sprintf(`%s/cb/pages/jsp/account/getDepositsBalanceBancolombiaHome.action?cst=%s`, c.baseURL, c.cst)
@@ -522,7 +522,7 @@ func (c *client) GetDepositsBalance() (db DepositsBalance, err error) {
 
 	err = c.requestJSONWithHeaders(http.MethodPost, u, body, &response, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
-		return db, err
+		return DepositsBalance{}, err
 	}
 
 	return response.GridModel[0], nil
