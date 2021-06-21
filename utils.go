@@ -73,7 +73,8 @@ func getInnerText(n *html.Node) string {
 			str += c.Data
 		} else if c.Type == html.ElementNode && c.Data == "br" {
 			str += "\n"
-		} else {
+			// } else {
+		} else if c.Type == html.ElementNode && c.Data != "script" {
 			str += getInnerText(c)
 		}
 	}

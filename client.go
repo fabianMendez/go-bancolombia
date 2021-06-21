@@ -255,6 +255,22 @@ func (c *client) Login(username, password string) error {
 		return fmt.Errorf("could not submit loginUserForm: %w", err)
 	}
 
+	// https://sucursalpersonas.transaccionesbancolombia.com/mua/view
+	log.Println(c.refererURL)
+	openTop := getElementByID(doc, "openTop")
+	if openTop != nil {
+		u := fmt.Sprintf(`%s/mua/initAuthProcess`, c.baseURL)
+		doc, err = c.loadHTML(c.get(u))
+		if err == nil {
+			summary := getElementByID(doc, "summary")
+			errorText := strings.TrimSpace(getInnerText(summary))
+			if errorText != "" {
+				return fmt.Errorf(errorText)
+			}
+		}
+		return fmt.Errorf("invalid credentials")
+	}
+
 	resp, err := c.submitForm(doc, "post-return")
 	if err != nil {
 		return fmt.Errorf("could not submit post-return form: %w", err)

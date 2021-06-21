@@ -30,7 +30,7 @@ func main() {
 
 	err = cl.Login(user, password)
 	if err != nil {
-		log.Fatal("could not login:", err)
+		log.Fatal("could not login: ", err)
 	}
 
 	defer cl.Logout()
