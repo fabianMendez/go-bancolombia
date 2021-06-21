@@ -22,7 +22,7 @@ type Client interface {
 	Login(username, password string) error
 	Logout() error
 	GetDepositsBalance() (DepositsBalance, error)
-	GetSavingsDetail(page int) ([]SavingsDetail, error)
+	GetSavingsDetail(id string, page int) ([]SavingsDetail, error)
 }
 
 type client struct {
@@ -528,10 +528,10 @@ func (c *client) GetDepositsBalance() (DepositsBalance, error) {
 	return response.GridModel[0], nil
 }
 
-func (c *client) preGetSavingsDetail(step int) error {
+func (c *client) preGetSavingsDetail(id string, step int) error {
 	var u string
 	if step == 1 {
-		u = c.baseURL + c.cstUrl("/cb/pages/jsp-ns/olb/ACCTARGETQuery?entity=MOVCA&fwviejoId=CA_22542427103650&operation=MOVCA&clean=true")
+		u = c.baseURL + c.cstUrl(fmt.Sprintf("/cb/pages/jsp-ns/olb/ACCTARGETQuery?entity=MOVCA&fwviejoId=%s&operation=MOVCA&clean=true", id))
 	} else {
 		u = c.baseURL + c.cstUrl(fmt.Sprintf("/cb/pages/jsp-ns/olb/AccountDetailAsset?&step=%d&open=Y", step))
 	}
