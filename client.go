@@ -564,13 +564,26 @@ func (c *client) preGetSavingsDetail(id string, step int) error {
 type SavingsDetail struct {
 	Amount      float64 `json:"amount"`
 	BranchID    string  `json:"branchId"`
-	Date        string  `json:"date"`
+	Date        fecha   `json:"date"`
 	Description string  `json:"description"`
 	OptionalRef string  `json:"optionalRef"`
 }
 
-func (c *client) GetSavingsDetail(page int) ([]SavingsDetail, error) {
-	err := c.preGetSavingsDetail(page)
+type fecha struct {
+	time.Time
+}
+
+func (f *fecha) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		return nil
+	}
+	var err error
+	f.Time, err = time.Parse(`"2006-01-02T15:04:05"`, string(data))
+	return err
+}
+
+func (c *client) GetSavingsDetail(id string, page int) ([]SavingsDetail, error) {
+	err := c.preGetSavingsDetail(id, page)
 	if err != nil {
 		return nil, err
 	}
