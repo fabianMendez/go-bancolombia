@@ -1,14 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
 	// "os"
 
+	"github.com/dustin/go-humanize"
 	"github.com/joho/godotenv"
+	"github.com/olekukonko/tablewriter"
 )
+
+func fmtMoney(n float64) string {
+	return "$ " + humanize.FormatFloat("#,###.##", n)
+}
 
 func main() {
 	_ = godotenv.Load()
@@ -39,15 +44,35 @@ func main() {
 	if err != nil {
 		log.Fatal("could not get deposits balance:", err)
 	}
-	fmt.Printf("%s - %s: (%s) %s\n", balance.ProductName, balance.Number, balance.Currency, balance.AvailableBalance)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Tipo", "Número", "Saldo disponible"})
+	table.Append([]string{balance.Description, balance.Number, "$ " + balance.AvailableBalance})
+	table.Render()
 
-	for i := 1; i <= 6; i++ {
-		detail, err := cl.GetSavingsDetail(i % 3)
+	// fmt.Printf("%#v\n", balance)
+
+	tableB := tablewriter.NewWriter(os.Stdout)
+	tableB.SetHeader([]string{"Fecha", "Oficina", "Descripción", "Referencia", "Monto"})
+	tableB.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_DEFAULT,
+		tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT})
+
+	for i := 1; i <= 3; i++ {
+		detail, err := cl.GetSavingsDetail(balance.ID, i%3)
 		if err != nil {
 			log.Fatal("could not get savings detail:", i, err)
 		}
 		for _, d := range detail {
-			fmt.Println(d.BranchID, d.Amount, d.Date, d.Description, d.OptionalRef)
+			row := []string{d.Date.Format("2006/01/02"), d.BranchID, d.Description, d.OptionalRef, fmtMoney(d.Amount)}
+			fgcolor := tablewriter.FgGreenColor
+			if d.Amount < 0 {
+				fgcolor = tablewriter.FgRedColor
+			} else if d.Amount < 50000 {
+				fgcolor = tablewriter.FgYellowColor
+			}
+			// tableB.Append(row)
+			tableB.Rich(row, []tablewriter.Colors{{}, {}, {}, {}, {fgcolor}})
 		}
 	}
+
+	tableB.Render()
 }
