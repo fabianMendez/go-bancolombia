@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fabianMendez/htmldom"
 	"golang.org/x/net/html"
 )
 
@@ -255,8 +256,11 @@ func (c *client) Login(username, password string) error {
 		return fmt.Errorf("could not submit loginUserForm: %w", err)
 	}
 
+	// 2021/06/26 09:11:35 could not login: Usuario o clave inválida. Por favor intente de nuevo.
+	// could not login: captcha_error_server
 	// https://sucursalpersonas.transaccionesbancolombia.com/mua/view
-	log.Println(c.refererURL)
+	// https://sucursalpersonas.transaccionesbancolombia.com/mua/CLOSE_ALL?scis=Xj%2FFadZlcYEo%2BlD0R%2FW6WDJy0aqcUoDMJv3VkuJtl1Q%3D
+	// log.Println(c.refererURL)
 	openTop := getElementByID(doc, "openTop")
 	if openTop != nil {
 		u := fmt.Sprintf(`%s/mua/initAuthProcess`, c.baseURL)
@@ -271,84 +275,58 @@ func (c *client) Login(username, password string) error {
 		return fmt.Errorf("invalid credentials")
 	}
 
-	resp, err := c.submitForm(doc, "post-return")
-	if err != nil {
-		return fmt.Errorf("could not submit post-return form: %w", err)
-	}
+	for {
+		locationReplace := parseLocationReplace(doc)
+		// if locationReplace != "" {
+		// 	fmt.Println(locationReplace)
+		// }
 
-	_ = resp.Body.Close()
-	// io.Copy(os.Stdout, resp.Body)
+		if strings.HasSuffix(locationReplace, "mainPage.jsp") {
+			action, err = c.buildAction(locationReplace)
+			if err != nil {
+				return err
+			}
+			fmt.Println(action)
 
-	doc, err = c.loadHTML(c.get(c.baseURL + "/mua/CONTINUE_SM"))
-	if err != nil {
-		return fmt.Errorf("could not submit request: %w", err)
-	}
+			_, err = c.loadHTML(c.get(action))
+			if err != nil {
+				return fmt.Errorf("could not load mainPage: %w", err)
+			}
+			break
+		}
 
-	doc, err = c.loadHTML(c.submitForm(doc, "post-return"))
-	if err != nil {
-		return fmt.Errorf("could not submit post-return form: %w", err)
-	}
+		form := htmldom.GetElementByTag(doc, "form")
+		if form == nil {
+			html.Render(os.Stderr, doc)
+			break
+		}
 
-	action = parseUrlRedirect(doc)
-	action = filterUrl(action)
-	tokenM := parseTokenMua(doc)
-	code := parseCodeRedirect(doc)
-	doc, err = c.loadHTML(c.submitFormValues(doc, "post-login", action, url.Values{
-		"tokenM": []string{tokenM},
-		"code":   []string{code},
-	}))
-	if err != nil {
-		return fmt.Errorf("could not submit post-login form: %w", err)
-	}
+		formID := htmldom.GetAttribute(form, "id")
+		// fmt.Println("formID", formID)
+		if formID == "post-login" {
+			tokenM := parseTokenMua(doc)
+			code := parseCodeRedirect(doc)
 
-	doc, err = c.loadHTML(c.submitForm(doc, "post-link-mada"))
-	if err != nil {
-		return fmt.Errorf("could not submit post-link-mada form: %w", err)
-	}
+			if tokenM != "" && code != "" {
+				action = parseUrlRedirect(doc)
+				action = filterUrl(action)
+				// fmt.Println("post login form:", action)
 
-	doc, err = c.loadHTML(c.submitForm(doc, "post-link-index"))
-	if err != nil {
-		return fmt.Errorf("could not submit post-link-index form: %w", err)
-	}
+				doc, err = c.loadHTML(c.submitFormValues(doc, "post-login", action, url.Values{
+					"tokenM": []string{tokenM},
+					"code":   []string{code},
+				}))
+				if err != nil {
+					return fmt.Errorf("could not submit post-login form: %w", err)
+				}
+				continue
+			}
+		}
 
-	doc, err = c.loadHTML(c.submitForm(doc, "post-login"))
-	if err != nil {
-		return fmt.Errorf("could not submit post-login form: %w", err)
-	}
-
-	doc, err = c.loadHTML(c.submitForm(doc, "invocacion"))
-	if err != nil {
-		return fmt.Errorf("could not submit invocacion form: %w", err)
-	}
-
-	doc, err = c.loadHTML(c.submitForm(doc, "validateUser"))
-	if err != nil {
-		return fmt.Errorf("could not submit validateUser form: %w", err)
-	}
-
-	doc, err = c.loadHTML(c.submitForm(doc, "loginSimulateFormID"))
-	if err != nil {
-		return fmt.Errorf("could not submit loginSimulateFormID form: %w", err)
-	}
-
-	doc, err = c.loadHTML(c.submitForm(doc, "loginForm"))
-	if err != nil {
-		return fmt.Errorf("could not submit loginForm form: %w", err)
-	}
-
-	doc, err = c.loadHTML(c.submitForm(doc, "loginForm1"))
-	if err != nil {
-		return fmt.Errorf("could not submit loginForm1 form: %w", err)
-	}
-
-	action, err = c.buildAction(parseLocationReplace(doc))
-	if err != nil {
-		return err
-	}
-
-	_, err = c.loadHTML(c.get(action))
-	if err != nil {
-		return fmt.Errorf("could not load mainPage: %w", err)
+		doc, err = c.loadHTML(c.submitForm(doc, formID))
+		if err != nil {
+			return fmt.Errorf("could not submit %s form: %w", formID, err)
+		}
 	}
 
 	action, err = c.buildAction("index.jsp")
@@ -383,7 +361,7 @@ func (c *client) buildAction(action string) (string, error) {
 }
 
 func (c *client) submitForm(doc *html.Node, id string) (*http.Response, error) {
-	form := getElementByID(doc, id)
+	form := htmldom.GetElementByID(doc, id)
 	if form == nil {
 		html.Render(os.Stderr, doc)
 		/*
