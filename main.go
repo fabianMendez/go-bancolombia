@@ -3,12 +3,16 @@ package main
 import (
 	"log"
 	"os"
+	"bufio"
+	"fmt"
+	"syscall"
 
 	// "os"
 
 	"github.com/dustin/go-humanize"
 	"github.com/joho/godotenv"
 	"github.com/olekukonko/tablewriter"
+	"golang.org/x/term"
 )
 
 func fmtMoney(n float64) string {
@@ -23,14 +27,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	rdr := bufio.NewReader(os.Stdin)
+
 	user, found := os.LookupEnv("AUTH_USER")
 	if !found {
-		log.Fatal("User required")
+		fmt.Print("User: ")
+		user, err = rdr.ReadString('\n')
+		if err != nil {
+			log.Fatal("User required")
+		}
 	}
 
 	password, found := os.LookupEnv("AUTH_PASS")
 	if !found {
-		log.Fatal("Password required")
+		fmt.Print("Password: ")
+		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			log.Fatal("Password required")
+		}
+		fmt.Println()
+		password = string(bytePassword)
 	}
 
 	err = cl.Login(user, password)
