@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
-	"os"
 	"bufio"
 	"fmt"
+	"log"
+	"os"
+	"strings"
 	"syscall"
 
 	// "os"
@@ -36,6 +37,7 @@ func main() {
 		if err != nil {
 			log.Fatal("User required")
 		}
+		user = strings.TrimSpace(user)
 	}
 
 	password, found := os.LookupEnv("AUTH_PASS")
