@@ -199,7 +199,8 @@ func (c *client) Login(username, password string) error {
 
 	loginUserForm := getElementByID(doc, "loginUserForm")
 	if loginUserForm == nil {
-		return fmt.Errorf("could not find login user form: %w", err)
+		html.Render(os.Stderr, doc)
+		return fmt.Errorf("could not find login user form")
 	}
 
 	action := getAttribute(loginUserForm, "action")
@@ -218,9 +219,24 @@ func (c *client) Login(username, password string) error {
 		return fmt.Errorf("could not submit loginUserForm: %w", err)
 	}
 
+	openTop := getElementByID(doc, "openTop")
+	if openTop != nil {
+		u := fmt.Sprintf(`%s/mua/initAuthProcess`, c.baseURL)
+		doc, err = c.loadHTML(c.get(u))
+		if err == nil {
+			summary := getElementByID(doc, "summary")
+			errorText := strings.TrimSpace(getInnerText(summary))
+			if errorText != "" {
+				return fmt.Errorf(errorText)
+			}
+		}
+		return fmt.Errorf("invalid username")
+	}
+
 	loginUserForm = getElementByID(doc, "loginUserForm")
 	if loginUserForm == nil {
-		return fmt.Errorf("could not find login user form: %w", err)
+		html.Render(os.Stderr, doc)
+		return fmt.Errorf("could not find login user form")
 	}
 
 	t1Assertion := parseT1Assertion(doc)
@@ -261,7 +277,7 @@ func (c *client) Login(username, password string) error {
 	// https://sucursalpersonas.transaccionesbancolombia.com/mua/view
 	// https://sucursalpersonas.transaccionesbancolombia.com/mua/CLOSE_ALL?scis=Xj%2FFadZlcYEo%2BlD0R%2FW6WDJy0aqcUoDMJv3VkuJtl1Q%3D
 	// log.Println(c.refererURL)
-	openTop := getElementByID(doc, "openTop")
+	openTop = getElementByID(doc, "openTop")
 	if openTop != nil {
 		u := fmt.Sprintf(`%s/mua/initAuthProcess`, c.baseURL)
 		doc, err = c.loadHTML(c.get(u))
