@@ -24,6 +24,7 @@ type Client interface {
 	Logout() error
 	GetDepositsBalance() (DepositsBalance, error)
 	GetSavingsDetail(id string, page int) ([]SavingsDetail, error)
+	AccountEnroll() error
 }
 
 type client struct {
@@ -266,6 +267,7 @@ func (c *client) Login(username, password string) error {
 		"deviceprint":  []string{deviceprint},
 		"pgid":         []string{pgid},
 		"uievent":      []string{uievent},
+		// g-recaptcha-response: ""
 	}
 	doc, err = c.loadHTML(c.postForm(c.baseURL+action, values))
 	if err != nil {
@@ -606,6 +608,52 @@ func (c *client) GetSavingsDetail(id string, page int) ([]SavingsDetail, error) 
 	}
 
 	return response.GridModel, nil
+}
+
+func (c *client) AccountEnroll() error {
+	u := fmt.Sprintf(`%s/cb/pages/jsp/security/invokeSecondPass.jsp?cst=%s`, c.baseURL, c.cst)
+	bodyValues := url.Values{}
+	bodyValues.Add("urlreturn", "/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp")
+	bodyValues.Add("menu", "TRANSFER")
+	bodyValues.Add("sub", "TIC")
+	bodyValues.Add("wizard", "N")
+	bodyValues.Add("CSRF_TOKEN", c.csrfToken)
+	bodyValues.Add("cst", c.cst)
+	body := strings.NewReader(bodyValues.Encode())
+
+	var err error
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+
+	u = fmt.Sprintf(`%s/cb/pages/jsp-ns/olb/GetOtpServicesInfo?cst=%s`, c.baseURL, c.cst)
+	bodyValues = url.Values{}
+	bodyValues.Add("CSRF_TOKEN", c.csrfToken)
+	bodyValues.Add("cst", c.cst)
+	body = strings.NewReader(bodyValues.Encode())
+
+	doc, err := c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
+	if err != nil {
+		return err
+	}
+
+	u = fmt.Sprintf(`%s/mua/initAuth?cst=%s`, c.baseURL, c.cst)
+	token := parseTokenValue(doc)
+	bodyValues = url.Values{"TOKEN": []string{token}}
+	body = strings.NewReader(bodyValues.Encode())
+	resp, err = c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	_, _ = io.Copy(os.Stdout, resp.Body)
+
+	return nil
 }
 
 func mapPassword(keymap map[string]string, password string) string {

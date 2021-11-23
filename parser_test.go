@@ -244,3 +244,29 @@ func TestParseCsrfToken(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTokenValue(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{
+			filename: "./testdata/response9.html",
+			expected: "TOKEN_VALUE",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			f, err := os.Open(tt.filename)
+			require.NoError(t, err)
+			defer f.Close()
+
+			doc, err := html.Parse(f)
+			require.NoError(t, err)
+
+			actual := parseTokenValue(doc)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

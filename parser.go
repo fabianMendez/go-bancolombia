@@ -160,6 +160,8 @@ func parseCodeRedirect(node *html.Node) string {
 	return ""
 }
 
+// parseLocationReplace searches for a script tag with a location.replace statement
+// and returns the replacement string
 func parseLocationReplace(node *html.Node) string {
 	scripts := getAllElemenstByTag(node, "script")
 	for _, script := range scripts {
@@ -199,6 +201,24 @@ func parseCsrfToken(node *html.Node) string {
 		value := getAttribute(elm, "value")
 		if name == "CSRF_TOKEN" && value != "" {
 			return value
+		}
+	}
+	return ""
+}
+
+// parseTokenValue extracts the value of the token argument
+// present in the given node with the following format: {'TOKEN': 'value'}
+func parseTokenValue(node *html.Node) string {
+	scripts := getAllElemenstByTag(node, "script")
+	for _, script := range scripts {
+		src := getInnerText(script)
+		ptn := "'TOKEN':"
+		i := strings.Index(src, ptn)
+		if i != -1 {
+			value := getValueInside(src[i+len(ptn):], `'`, `'}`)
+			if value != "" {
+				return value
+			}
 		}
 	}
 	return ""

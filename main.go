@@ -55,6 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatal("could not login: ", err)
 	}
+	log.Println("logged in")
 
 	defer cl.Logout()
 
@@ -62,6 +63,15 @@ func main() {
 	if err != nil {
 		log.Fatal("could not get deposits balance:", err)
 	}
+
+	err = cl.AccountEnroll()
+	if err != nil {
+		log.Fatal("could not enroll account: ", err)
+	} else {
+		log.Println("account enrolled")
+		os.Exit(0)
+	}
+
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Tipo", "Número", "Saldo disponible"})
 	table.Append([]string{balance.Description, balance.Number, "$ " + balance.AvailableBalance})
