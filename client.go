@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -13,10 +14,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fabianMendez/htmldom"
 	"golang.org/x/net/html"
+	"golang.org/x/term"
 )
 
 type Client interface {
@@ -62,12 +65,12 @@ func NewClient() (Client, error) {
 	}
 	httpClient.Jar = jar
 
-	nullf, err := os.Open("/dev/null")
-	if err != nil {
-		return nil, err
-	}
-	l := log.New(nullf, "", log.LstdFlags)
-	// l := log.Default()
+	// nullf, err := os.Open("/dev/null")
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// l := log.New(nullf, "", log.LstdFlags)
+	l := log.Default()
 
 	return &client{
 		httpClient: httpClient,
@@ -139,6 +142,14 @@ func (c *client) requestWithHeaders(method, u string, body io.Reader, headers ma
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusTooManyRequests {
+			retryAfter := resp.Header.Get("Retry-After")
+			c.log.Printf("retry after %s seconds\n", retryAfter)
+			errorMessage, err := io.ReadAll(resp.Body)
+			if err == nil {
+				return nil, errors.New(string(errorMessage))
+			}
+		}
 		return nil, fmt.Errorf("request failed: %s", resp.Status)
 	}
 
@@ -644,18 +655,131 @@ func (c *client) AccountEnroll() error {
 	token := parseTokenValue(doc)
 	bodyValues = url.Values{"TOKEN": []string{token}}
 	body = strings.NewReader(bodyValues.Encode())
-	resp, err = c.requestWithHeaders(http.MethodPost, u, body, headers)
+	doc, err = c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
 	if err != nil {
 		return err
 	}
 
-	defer resp.Body.Close()
+	for {
+		fmt.Print("OTP: ")
+		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			log.Fatal("OTP required")
+		}
+		fmt.Println()
+		otp := string(bytePassword)
 
-	_, _ = io.Copy(os.Stdout, resp.Body)
+		autenticationOdaForm := getElementByID(doc, "autenticationOdaForm")
+		if autenticationOdaForm == nil {
+			html.Render(os.Stderr, doc)
+			return fmt.Errorf("could not find login user form")
+		}
 
-	return nil
+		t1Assertion := parseT1Assertion(doc)
+		// keyboardSrc := parseKeyboardContent(doc)
+
+		// keyboardNode, err := html.Parse(strings.NewReader(keyboardSrc))
+		// if err != nil {
+		// 	return fmt.Errorf("could not parse keyboard: %w", err)
+		// }
+		// keyMap := parseKeyboardMap(keyboardNode)
+		fmt.Println(otp)
+		// otp = mapPassword(keyMap, otp)
+		// fmt.Println(otp)
+		initRngPool()
+		idSs := processPassword(otp, t1Assertion)
+		fmt.Println(idSs)
+		action := getAttribute(autenticationOdaForm, "action")
+		fmt.Println(action)
+		// errorTexto
+		bodyValues = url.Values{
+			"softoken":   []string{idSs},
+			"tempUserID": []string{""},
+			"userID":     []string{""},
+		}
+		doc, err = c.loadHTML(c.postForm(c.baseURL+action, bodyValues))
+		if err != nil {
+			return fmt.Errorf("could not submit autenticationOdaForm: %w", err)
+		}
+
+		token = parseTokenValue(doc)
+		if token == "" {
+			summary := getElementByID(doc, "summary")
+			errorText := strings.TrimSpace(getInnerText(summary))
+			if errorText != "" {
+				fmt.Fprintln(os.Stderr, errorText)
+				continue
+			}
+
+			return fmt.Errorf("unexpected error")
+		}
+
+		bodyValues = url.Values{"TOKEN": []string{token}}
+		body = strings.NewReader(bodyValues.Encode())
+		queryParams := url.Values{}
+		queryParams.Set("CSRF_TOKEN", c.csrfToken)
+		queryParams.Set("urlMenu", "/cb/pages/jsp/security/sessionInvoke.jsp")
+		queryParams.Set("cst", c.cst)
+
+		u = fmt.Sprintf("%s/cb/pages/jsp/security/sessionInvoke.jsp?menu=TRANSFER&sub=TIC&security_domain=OTP&%s",
+			c.baseURL, queryParams.Encode())
+
+		doc, err = c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
+		if err != nil {
+			return err
+		}
+		tokenMada, err := url.QueryUnescape(parseTokenMada(doc))
+		if err != nil {
+			return fmt.Errorf("could not unescape mada token: %w", err)
+		}
+		u = fmt.Sprintf(`%s/cb/pages/jsp-ns/validateSecondPasswordFromMada.action?cst=%s`, c.baseURL, c.cst)
+		bodyValues = url.Values{}
+		bodyValues.Set("tokenMada", tokenMada)
+		bodyValues.Set("menu", "TRANSFER")
+		bodyValues.Set("sub", "TIC")
+		bodyValues.Set("urlMenu", `/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp`)
+		bodyValues.Set("flowid", "null")
+		bodyValues.Set("security_domain", "OTP")
+		bodyValues.Set("CSRF_TOKEN", c.csrfToken)
+		bodyValues.Set("cst", c.cst)
+		body = strings.NewReader(bodyValues.Encode())
+		resp, err = c.requestWithHeaders(http.MethodPost, u, body, headers)
+		if err != nil {
+			return err
+		}
+		_ = resp.Body.Close()
+
+		u = fmt.Sprintf(`%s/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp`, c.baseURL)
+		bodyValues = url.Values{}
+		bodyValues.Set("flowid", "null")
+		bodyValues.Set("security_domain", "OTP")
+		bodyValues.Set("CSRF_TOKEN", c.csrfToken)
+		bodyValues.Set("cst", c.cst)
+		body = strings.NewReader(bodyValues.Encode())
+		resp, err = c.requestWithHeaders(http.MethodPost, u, body, headers)
+		if err != nil {
+			return err
+		}
+		_ = resp.Body.Close()
+
+		u = fmt.Sprintf(`%s/cb/pages/jsp/account/EnrollmentGetListBanksACHAction.action?cst=%s`, c.baseURL, c.cst)
+		bodyValues = url.Values{}
+		bodyValues.Set("CSRF_TOKEN", c.csrfToken)
+		bodyValues.Set("cst", c.cst)
+		body = strings.NewReader(bodyValues.Encode())
+		doc, err = c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
+		if err != nil {
+			return err
+		}
+
+		return html.Render(os.Stderr, doc)
+
+		// return nil
+	}
+
 }
 
+// mapPassword encodes the actual password using the keymap
 func mapPassword(keymap map[string]string, password string) string {
 	newPassword := ""
 

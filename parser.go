@@ -40,6 +40,7 @@ func getValueInsideQuotes(s string) string {
 	return getValueInside(s, `"`, `";`)
 }
 
+// parseT1Assertion parses the t1Assertion variable inside a script tag
 func parseT1Assertion(node *html.Node) string {
 	scripts := getAllElemenstByTag(node, "script")
 	for _, script := range scripts {
@@ -52,6 +53,8 @@ func parseT1Assertion(node *html.Node) string {
 	return ""
 }
 
+// parseKeyboardContent parses the keyboard's html content
+// from the KEYCONTENT javascript variable
 func parseKeyboardContent(node *html.Node) string {
 	scripts := getAllElemenstByTag(node, "script")
 	for _, script := range scripts {
@@ -136,6 +139,22 @@ func parseTokenMua(node *html.Node) string {
 		i := strings.Index(src, ptn)
 		if i != -1 {
 			value := getValueInside(src[i+len(ptn):], `'`, `'`)
+			if value != "" {
+				return value
+			}
+		}
+	}
+	return ""
+}
+
+func parseTokenMada(node *html.Node) string {
+	scripts := getAllElemenstByTag(node, "script")
+	for _, script := range scripts {
+		src := getInnerText(script)
+		ptn := "tokenMada="
+		i := strings.Index(src, ptn)
+		if i != -1 {
+			value := getValueInside(src[i+len(ptn):], `=`, `"`)
 			if value != "" {
 				return value
 			}
