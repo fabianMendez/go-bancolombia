@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/fabianMendez/htmldom"
 	"golang.org/x/net/html"
 )
 
@@ -237,6 +238,25 @@ func parseTokenValue(node *html.Node) string {
 			value := getValueInside(src[i+len(ptn):], `'`, `'}`)
 			if value != "" {
 				return value
+			}
+		}
+	}
+	return ""
+}
+
+func parseJQuerySummary(node *html.Node) string {
+	scripts := getAllElemenstByTag(node, "script")
+	for _, script := range scripts {
+		src := getInnerText(script)
+		ptn := `$("#summary")`
+		i := strings.Index(src, ptn)
+		if i != -1 {
+			content := getValueInside(src[i+len(ptn):], `.html('`, `')`)
+			if content != "" {
+				node, err := html.Parse(strings.NewReader(content))
+				if err == nil {
+					return htmldom.GetInnerText(node)
+				}
 			}
 		}
 	}

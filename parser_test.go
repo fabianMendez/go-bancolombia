@@ -296,3 +296,29 @@ func TestParseTokenMada(t *testing.T) {
 		})
 	}
 }
+
+func TestParseJQuerySummary(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{
+			filename: "./testdata/response11.html",
+			expected: "Cuenta No existe en Depositos CODIGO:BC 917",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			f, err := os.Open(tt.filename)
+			require.NoError(t, err)
+			defer f.Close()
+
+			doc, err := html.Parse(f)
+			require.NoError(t, err)
+
+			actual := parseJQuerySummary(doc)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
