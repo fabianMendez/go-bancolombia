@@ -87,6 +87,7 @@ func NewClient() (Client, error) {
 		},
 	}, nil
 }
+
 func (c *client) updateCsrfToken(doc *html.Node) {
 	csrfToken := parseCsrfToken(doc)
 	if csrfToken != "" && csrfToken != c.csrfToken {
@@ -97,7 +98,7 @@ func (c *client) updateCsrfToken(doc *html.Node) {
 
 func (c *client) updateCstParam(doc *html.Node) {
 	cstParam := parseCstParam(doc)
-	if cstParam != "" {
+	if cstParam != "" && cstParam != c.cst {
 		c.log.Println("CST =>", cstParam)
 		c.cst = cstParam
 	}
