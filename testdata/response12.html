@@ -1,0 +1,423 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<link href="/mua/css/styles_mua_svp.css?v=4.5.5.RC3_1636146387448" media="all"	rel="stylesheet" type="text/css">
+ 
+   
+
+	<script type="text/javascript" src="/mua/js/keyEncript/jsbn2.js"></script>
+	<script type="text/javascript" src="/mua/js/keyEncript/prng4.js"></script>
+	<script type="text/javascript" src="/mua/js/keyEncript/rng.js"></script>
+	<script type="text/javascript" src="/mua/js/keyEncript/base64.js"></script>
+	<script type="text/javascript" src="/mua/js/keyEncript/rsa-t1.js"></script>
+	<script language="JavaScript">
+	var t1Assertion="BAAYKahUpSzcgeoCfqti";
+	function processPassword(password){var rsa = new RSAKey();rsa.setPublic("A6CA1BB4BD803E5704A071E8F7370FD68F2A42CAB574A765693F0F54796CB8AD2CF1B624005119FE651227F7992FF6A6D1979C9B72EA0EAD789F1CBADAB9851779CB8F5F82F40BC71C5C303A10298ED6DC5657E3401AE5720F06836F098366441AC30AB35F13FAB8B6CE81955A1181FCA0AD4EA471CC09C51EAE8EDA42E8C615F933483449CBC67883F407430CB856E4EEC1919BFDD38850CCF5837EC67D8CF802EC30836099592FCDB6CEF4D4AB8EC7F95229B6B262DC6F9A62BFD082CCF98D8FC73FADFA2CCBDDBD17126206E0EC41FE85ECDB9B7631A7EDEF193E4971ADA3E4AB3FFE05F5146907255AD29D0AFB91160C95E225514E1CD07E35BA157A44D1", "10001");var res2 = rsa.encrypt(password + "|" + t1Assertion);return hex2b64(res2);}  
+	</script>
+   
+   
+	<script language="JavaScript" type="text/javascript" src="/mua/js/keyboard/layer_lib_util.js?v=4.5.5.RC3_1636146387448"></script>
+	<link href="/mua/css/keyboard_util.css?v=4.5.5.RC3_1636146387448" rel="stylesheet" type="text/css">
+	
+
+
+
+<script language="JavaScript">
+function addEventsButton(id_button){
+var IE = navigator.appName=="Microsoft Internet Explorer";
+if( navigator.userAgent.match( /iPad/i ) ) {
+document.getElementById(id_button).addEventListener('touchstart', function(){recoveryPassword();WtmbZqnXBKWa();document.authenticationForm.userId.value = '0';  return nqlrZUyBeYkH();}, false);
+}
+else if(IE){
+document.getElementById(id_button).attachEvent('onclick', function(){recoveryPassword(); TTpuVEkyJUmc(); document.authenticationForm.userId.value = '0';  return nqlrZUyBeYkH();});
+document.getElementById(id_button).attachEvent('onmouseover', function(){WtmbZqnXBKWa();});
+document.getElementById(id_button).attachEvent('onmouseout', function(){jASGFtwNuWVz();});
+}else{
+document.getElementById(id_button).addEventListener('click', function(){recoveryPassword(); TTpuVEkyJUmc(); document.authenticationForm.userId.value = '0';  return nqlrZUyBeYkH();}, false);
+document.getElementById(id_button).addEventListener('mouseover', function(){WtmbZqnXBKWa();}, false);
+document.getElementById(id_button).addEventListener('mouseout', function(){jASGFtwNuWVz();}, false);
+}
+}
+function clearByError(){
+if(document.forms[0].userId.value == '' || isEmpty(passwordMinLength[0]) || (passwordMinLength[0] < DEF_MAXLENGTH - 1)){
+clearKeys();
+document.forms[0].password.value='';
+}
+}
+function validateAndClear(){
+var validate = nqlrZUyBeYkH();
+if (isNaN(validate) || validate == null || validate == false){
+if( navigator.userAgent.match( /iPad/i ) ) {
+clearByErrorIpad();
+} else {
+clearByError();
+}
+return false;	
+}
+return true;
+}
+function clearByErrorIpad(){
+document.forms[0].userId.value='';
+document.forms[0].password.value='';
+document.forms[0].tempUserID.value='';
+return true;
+}
+function addEventsButtonSinCero(id_button){
+var IE = navigator.appName=="Microsoft Internet Explorer";
+if( navigator.userAgent.match( /iPad/i ) ) {
+document.getElementById(id_button).addEventListener('touchstart', function(){recoveryPassword(); WtmbZqnXBKWa(); if(validateAndClear()){validateForm();}}, false);
+}
+else if(IE){
+
+document.getElementById(id_button).attachEvent('onmouseover', function(){TTpuVEkyJUmc();});
+document.getElementById(id_button).attachEvent('onmouseout', function(){changeToOrigKeyboard();});
+}else{
+document.getElementById(id_button).addEventListener('mouseover', function(){TTpuVEkyJUmc();}, false);
+document.getElementById(id_button).addEventListener('mouseout', function(){changeToOrigKeyboard();}, false);
+}
+}
+var XILyjHBwwZky = [{'PASSWORDS2':'dxpqUYGwYyqx','PASSWORDS1':'HkNxaVpY_kzc','PASSWORD':'lOzmSHzRAqZx','PASSWORD3':'xkyXaIxYheWo'}][0];
+function changePass( name ) {
+return ( XILyjHBwwZky[name.toUpperCase()] );
+}
+var passwordMinLength = new Array();
+var omitformtags=["input", "textarea", "select"]
+omitformtags=omitformtags.join("|")
+var maxLengthKeyboard;
+var origKeyboardShown = true;
+var contrastLevel= "2";
+var fontSizeDefault=12;
+var indexField = 0;
+var isOpen = false;
+var isLayer = false;
+var KEYCONTENT = '';
+var DEF_MAXLENGTH = 4;
+var YamMTrXyXdaI = new Array();
+var XcSbreFgfFeu = new Array();
+var maxLengthKeyboard = DEF_MAXLENGTH;
+var regFunction;
+
+
+function changeConstrastImage(){  var mykey = document.getElementById('constrastImg');  mykey.src='/mua/images/kb/Contraste' + contrastLevel + '.gif?v=4.5.5.RC3_1636146387448' }
+function refreshNumericKeyboard(contrastLevel) {      for(var i=0; i<10; i++) {      var mykey = document.getElementById('uiTlwVJvXRQY' + i);  mykey.style.fontSize=fontSizeDefault;    mykey.className = 'colorContrast'+contrastLevel;    }       var clearKey = document.getElementById('clearKey');      clearKey.className = 'colorContrast'+contrastLevel;}
+function LBIlQwygbWZw(){     	KEYCONTENT = "  <table class='keyboard' border='0' cellspacing='0' cellpadding='0' align='left' valign='top'>  <tr>    <td width='0' height='39' ></td>    <td></td>  </tr>  <tr>    <td height='0' width='11'></td>    <td colspan='2'>      <table align='left' valign='top' cellspacing='0' cellpadding='0' class='bg_button'>        <tr align='left'>                  <td valign='top' align='left'> <table class='bg_button' id='_KEYBRD' valign='top' >  <tr><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"n7EK\");'>  <div border='0' id ='uiTlwVJvXRQY9' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>9</div></td><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"d683\");'>  <div border='0' id ='uiTlwVJvXRQY6' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>6</div></td><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"XT9h\");'>  <div border='0' id ='uiTlwVJvXRQY8' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>8</div></td></tr>  <tr><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"IY4V\");'>  <div border='0' id ='uiTlwVJvXRQY1' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>1</div></td><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"1SHe\");'>  <div border='0' id ='uiTlwVJvXRQY0' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>0</div></td><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"WPBZ\");'>  <div border='0' id ='uiTlwVJvXRQY2' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>2</div></td></tr>  <tr><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"MgFC\");'>  <div border='0' id ='uiTlwVJvXRQY5' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>5</div></td><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"0aDk\");'>  <div border='0' id ='uiTlwVJvXRQY4' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>4</div></td><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"NcGJ\");'>  <div border='0' id ='uiTlwVJvXRQY3' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>3</div></td></tr>  <tr><td class='bg_buttonSmall'  align='center' style='cursor:default' onMouseOver='TTpuVEkyJUmc();' onmouseout='changeToOrigKeyboard();' onclick='lRQJkvFKRjZR(\"ObRA\");'>  <div border='0' id ='uiTlwVJvXRQY7' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>7</div></td><td colspan='2' onclick='clearKeys();' class='bg_buttonSmall'><div id='clearKey' border='0' valign='center' align='center' onfocus='this.blur();' class='colorContrast + contrastLevel + '>Borrar</div></td></tr></table><table class='bg_button' id='_CONSTRAST' valign='top' cellspacing='0'>  <tr><td><img width='90' height='34' border='0' src='/mua/images/kb/Contraste" + contrastLevel + ".gif?v=4.5.5.RC3_1636146387448' name='constrastImg' id='constrastImg' usemap='#numericKeyboardMap' > <map name='numericKeyboardMap' id='numericKeyboardMap'><area shape='circle' class='cursorContrast' coords='10,30,15' onmouseover=setHandCursor(document.constrastImg) onclick='changeContrastLevel(1)' onmouseout='setDefaultCursor(document.constrastImg)'><area shape='circle' class='cursorContrast' coords='50,30,15' onmouseover=setHandCursor(document.constrastImg) onclick='changeContrastLevel(2)' onmouseout='setDefaultCursor(document.constrastImg)'><area shape='circle' class='cursorContrast' coords='90,30,15' onmouseover=setHandCursor(document.constrastImg) onclick='changeContrastLevel(3)' onmouseout='setDefaultCursor(document.constrastImg)'></map></td></tr></table></td>        </tr>      </table>    </td>  </tr><tr>    <td height='17'></td>    <td colspan='2'></td>  </tr> </table>"; 	return KEYCONTENT;  }
+function changeToOrigKeyboard(){   	for (i=0;i<10;i++){      			var mykey = document.getElementById('uiTlwVJvXRQY' + i);   			mykey.innerHTML=i;     			mykey.style.fontSize=12;   			mykey.style.fontWeight='bolder';     	}        }
+function closeKeyb(){       	if (isLayer) activateChild(isOpen = false);         YamMTrXyXdaI[indexField].disabled = false;   }
+function lRQJkvFKRjZR(keyVal) {     	passwordMinLength[indexField] =YamMTrXyXdaI[indexField].value.length;	if (YamMTrXyXdaI[indexField].value.length < DEF_MAXLENGTH) {     		YamMTrXyXdaI[indexField].value += '*'; 	   	XcSbreFgfFeu[indexField].value += keyVal;        	   	if (regFunction) {       			regFunction();           	}  		if(document.secondPassForm.tempUserID != undefined) {       			if (document.secondPassForm.tempUserID.value !== "****************" && document.secondPassForm.tempUserID.value !== ""){        				document.secondPassForm.userId.value = document.secondPassForm.tempUserID.value;  			   	document.secondPassForm.tempUserID.value = "****************";    			}		} 	}}
+function bindElement(elem,index) {     	indexField=0;    	if (index!=undefined){   		indexField=index;  	}      	YamMTrXyXdaI[indexField] = elem; 	maxLengthKeyboard = (YamMTrXyXdaI[indexField] && YamMTrXyXdaI[indexField].maxLength? YamMTrXyXdaI[indexField].maxLength: DEF_MAXLENGTH);       }
+function setHandCursor(element) {        element.style.cursor = 'pointer';  }
+function createKeyboard(openLayer, xPos, yPos) {            if (isLayer = openLayer)            createChild(window, "keyboard", LBIlQwygbWZw(), isOpen, 330, 135, xPos, yPos);       else                document.getElementById('keyboard_').innerHTML =  (LBIlQwygbWZw());          blockSelect(document.all? document.all['_KEYBRD']: document.getElementById? document.getElementById('_KEYBRD'): document);          refreshNumericKeyboard(contrastLevel);     }     
+function changeContrastLevel(level) {     if(contrastLevel != level) {  contrastLevel = level;       refreshNumericKeyboard(level);       changeConstrastImage();}    }
+function setDefaultCursor(element) {        element.style.cursor = 'default';      }
+function recoveryPassword(){      	for (i=0; i<YamMTrXyXdaI.length; i++){	   YamMTrXyXdaI[i].value = XcSbreFgfFeu[i].value;        	}}		
+function reEnable(){       	return true;       }		
+function TTpuVEkyJUmc(){           for (i=0;i<10;i++){                var mykey = document.getElementById('uiTlwVJvXRQY' + i);       	     mykey.innerHTML='*';   	     mykey.style.fontSize=15;  	     mykey.style.fontWeight='bolder';          }}		
+function utKApUemrWMh(index) {  	if (index==undefined){       		index=0;   	}       	var form = YamMTrXyXdaI[0].form;      	var vf; 	if (!XcSbreFgfFeu[index]) {       	    var initialLength = form.elements.length;  var vfs='';		for (var i=0; i < initialLength; i++) {       			vf = XILyjHBwwZky[form.elements[i].name.toUpperCase()];   			if (vf) { vfs+='<input type="hidden" name="'+vf+'">' ;               			}		}	}     				document.getElementById('inputs_').innerHTML = ( vfs );	for (ind=0; ind<YamMTrXyXdaI.length; ind++){		vf = XILyjHBwwZky[YamMTrXyXdaI[ind].name.toUpperCase()];   		if(form[vf] == undefined) {    			XcSbreFgfFeu[ind] = "";  		}     		else {       			XcSbreFgfFeu[ind] = form[vf];   		}   		XcSbreFgfFeu[ind].value = "";     	}}	
+function disableselect(e){       	if (omitformtags.indexOf(e.target.tagName.toLowerCase())==-1)   		return false;      }		
+function startKeyb(elem, index, modal) {           if (YamMTrXyXdaI[indexField]) {  	      YamMTrXyXdaI[indexField].disabled = false;             }      bindElement(elem);     	utKApUemrWMh(index);        if (!isOpen && isLayer) {   	     activateChild(isOpen = true);      }      if(modal)  {           YamMTrXyXdaI[indexField].disabled = true;        }    }
+function clearKeys() {   	  YamMTrXyXdaI[indexField].value=""; 	  XcSbreFgfFeu[indexField].value="";   }		
+function blockSelect(element) {      	if (typeof element.onselectstart!="undefined"){  		element.onselectstart=new Function ("event.returnValue=false;  return false; ");    	}else{      		element.onmousedown=disableselect;       		element.onmouseup=reEnable;     	}}	
+function changeConstrastImage(){  var mykey = document.getElementById('constrastImg');  mykey.src='/mua/images/kb/Contraste' + contrastLevel + '.gif?v=4.5.5.RC3_1636146387448' }	
+</script>
+	<script type="text/javascript" src="/mua/js/bootstrap.js"></script>
+
+
+	<script language="JavaScript">
+	var enPasswLength = 0;
+	function onlyInt(evt) {
+		var charCode = evt.keyCode || evt.which;
+        if (charCode <= 13) {
+            return true;
+        }
+        else {
+            var keyChar = String.fromCharCode(charCode);
+            var re = /[0-9]/;
+            if(re.test(keyChar))
+            {
+            	return true;
+            }
+            else
+            {
+            	return false;	
+            } 
+        }
+    }
+	
+	function validatePattern(obj){
+        var chars = obj.value.split('');
+        var re = /[0-9]/;       
+        for(var i=0;i<chars.length;i++){
+        	if(!(re.test(chars[i]))){
+        		return false;
+        	}
+        }
+        return true;
+	}
+	
+	$(document).ready(function() {
+		$.validator.addMethod("passwordLength", function(value,element,param){
+			return ( value.length >= 6  &&  value.length <= 6 );
+		} );
+
+		$.validator.addMethod("validaFormato", function(value,element,param){
+			var patron = /^[0-9]+$/;
+		    if(patron.test(value))
+		      return true;
+		    else
+		      return false;
+
+		} );
+		var validator = $("#autenticationOdaForm").bind("invalid-form.validate", function() {		
+		}).validate({
+		onsubmit: false,
+		onkeyup: false,
+		onclick: false,
+		onfocusout: false,
+		rules: {
+		errorContainer: $("#summary"),
+
+		passwordS1:{
+		required:true,
+		"passwordLength":true,
+		"validaFormato":true
+		},},
+		messages: {
+		passwordS1: {
+		required      : "<script>failedValidation('softokenErr', 'REQUERIDA');</"+"script>",
+		passwordLength: "<script>failedValidation('softokenErr', 'LONGITUD');</"+"script>",
+		validaFormato : "<script>failedValidation('softokenErr', 'FORMATO');</"+"script>",
+		},
+		}
+		});		
+		$(document).keypress(function(event) {if (event.which == 13) {event.preventDefault();document.getElementById('btnGo').click();}});	
+		$('#popoverUser').popover({html: true,trigger:'click',content:function(){return $("#popoverContent").html();}});
+		$('#popoverUser').click(function (e) {e.stopPropagation();});
+		$(document).click(function (e) {if (($('.popover').has(e.target).length == 0) || $(e.target).is('.close') || $(e.target).is('.mua_tooltip_close')) {$('#popoverUser').popover('hide');}});
+		passFocus();
+	});
+	
+	function failedValidation(idElement, message){
+		activarError(message);
+		document.getElementById("btnGo").disabled=false;
+		}
+	
+		function activarError(message){
+			if(message == 'REQUERIDA')
+			{
+				document.getElementById('summary').innerHTML='Ingrese la Clave Din&aacute;mica. '; 
+			}else if (message == 'LONGITUD')
+			{
+				document.getElementById('summary').innerHTML='Clave Din&aacute;mica no v&aacute;lida.';
+			}else if (message == 'FORMATO')
+			{
+				document.getElementById('summary').innerHTML='Clave Din&aacute;mica no v&aacute;lida.';
+			}
+		document.getElementById("tabError").style.display = "";
+		}
+		
+	
+	function trim(s){	s.value = s.value.replace(/^\s+|\s+$/g, '');}
+
+	function submiting(){
+		cleanError();
+		var form = $( "#autenticationOdaForm" );
+   		var count=0;
+   		var value = "";
+		$("#btnGo").disabled = true; 
+		if(count==0){
+			form.validate();
+			if ( form.valid() ){
+				
+				document.getElementById("btnGo").disabled=true;
+				document.getElementById("softoken").value = processPassword(document.getElementById("passwordS1").value);
+				
+				
+				document.getElementById("passwordS1").value = '';
+				document.getElementById("passwordS1").disabled=true;
+				//document.getElementById("passwordS1").type='text';
+				
+				document.getElementsByName(changePass('passwordS1')).value = '';
+				
+				
+				ajaxRequestWithParametersMuaCallback("/mua/procsec/doRequestOda?scis=Z0kgNHsCN8uNWvU7ZXw1gELFFa%2B8FUb2blWOfMBWYuxO4cqNnpEchXwd6qulgnk%2B", $("#autenticationOdaForm").serializeArray(),function(){processFocus();});
+                function processFocus()
+                {
+                            if($('#passwordS1').length){
+                                        $('#passwordS1').focus();
+                            }
+                            
+
+                }
+				
+   				count++;
+			}
+			else{
+				passFocus();
+			}
+		}
+	}
+	
+	function cancel(){
+		cleanError();
+		document.getElementById("passwordS1").value = '';
+		document.getElementById("passwordS1").type='password';
+		$('#passwordS1').focus();
+		document.getElementById("tabError").style.display = "none";
+		document.getElementById('summary').innerHTML='';
+	}
+	
+	function cleanError(){
+		document.getElementById("softokenErr").style.display  = "none";
+	}		
+	
+	function passFocus(){
+		console.log('passFocus');
+		document.getElementById("passwordS1").focus();
+	}
+	window.onload = function() {
+		passFocus();
+	};
+	</script>
+	
+	  <form id="autenticationOdaForm" name="SoftokenForm" action="/mua/procsec/doRequestOda?scis=wNdBAb6Gt0eC085AI45UUkLFFa%2B8FUb2blWOfMBWYuxO4cqNnpEchXwd6qulgnk%2B" method="post">
+  		<input id="softoken" name="softoken" class="mua-form-control" type="hidden" value=""/>
+   		<input type="hidden" name="tempUserID" id="tempUserID" />
+   		<input type="hidden" name="userId" id="userId" value="">
+  	 
+ <div class="mua_svp_form_div2">
+		    <div>
+		            <div class="panel panel-primary">
+		                <div class="panel-body">
+		                    <div class="row">
+		                    	
+
+
+
+
+
+
+
+
+
+
+<script language="JavaScript">
+	function cerrarError() {
+		document.getElementById("tabError").style.display = "none";
+		document.getElementById('summary').innerHTML='';
+	}
+</script>
+
+
+
+<div class="col-xs-12 col-sm-12 col-md-12 mua_message_from_svp_not_wizard" id="tabError" style='display: none;'>
+
+	<div class="errorDiv">
+		<div class="divTextMessage">
+			<span class="icon-error errorIcon">
+				<span class="path1"></span>
+				<span class="path2"></span>
+				<span class="path3"></span>
+            </span>
+            <div class="errorTitulo">Error</div>
+			<div id="summary" class="errorTexto">
+					
+					
+					
+				
+			</div>
+	</div>
+	</div>
+</div>
+
+							</div>
+							
+							<div class="mua_after_message">
+								<div class="row">
+									<div class="col-xs-12 col-sm-5 col-md-4">
+										<div class="panel_general mua-panel_general">
+											<div class="title-panel-label">
+												<h1>
+													Clave Din&aacute;mica
+												</h1>
+											</div>
+
+											<div class="subtitle-land-label">
+												<h4>
+													Para continuar con la transacci&oacute;n debe ingresar la Clave Din&aacute;mica que ser&aacute; enviada al celular a trav&eacute;s de mensaje de texto o al correo electr&oacute;nico que usted tiene registrado.
+												</h4>
+											</div>
+
+											<div id="contenido">
+												<div class="mua-content-group-panel">
+													<div class="mua-label-input">
+														<span id="popoverUser" class="glyphicon icon-icono-informacion mua_pg_pgdsc_icons"></span>
+														<div id="popoverContent" class="hide">
+															
+
+
+
+<span class="mua_tooltip_close">&times;</span>
+<div class="mua_tooltip_msg">
+	
+		
+			Es una clave que se utiliza para realizar transacciones ofreciendo mayor seguridad en el manejo de sus productos.
+		
+		
+	
+</div>
+														</div>
+														<label class="control-label"  for="softoken">
+															Ingrese la Clave Din&aacute;mica.
+														</label>
+													</div>
+													<div>
+														<div class="mua_svp_enroll_update_control">
+															<input id="passwordS1" name="passwordS1"  tabindex="1" class="mua-form-control mua_svp_control_password mua-input-icon" type="password" maxlength="6" autocomplete="off" onKeyPress="return onlyInt(event);" onchange="trim(document.SoftokenForm.passwordS1)" />
+															<span class="mua-icon-lock"></span>
+														</div>
+														<div id="softokenErr" class="labelError" style='display: none'></div>
+													</div>
+												</div>
+											</div>
+
+											<div class="two-button-container mua-button-container">
+												<div class="two-button-a">
+													<input type="button" id="btnCancel"
+														onclick="cancel(); return (false);" class="btn btn-default"
+														value='Borrar'>
+												</div>
+												<div class="two-button-b">
+													<input type="button" id="btnGo" onclick="submiting();"
+														class="btn btn-success"
+														value='Aceptar'>
+												</div>
+											</div>
+										</div>
+										<br>
+										<br>
+									</div>
+
+
+									<div class="col-xs-12 col-sm-7 col-md-8">
+										<img  src="/mua/images/Banner-osp-oda-v1.gif" alt="img"  style="width:100%" />
+									</div>
+								</div>
+							</div>
+ 		        </div>
+		    </div>
+		</div>
+		
+    </div>
+</form>
+
+	

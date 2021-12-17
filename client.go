@@ -27,7 +27,7 @@ type Client interface {
 	Logout() error
 	GetDepositsBalance() (DepositsBalance, error)
 	GetSavingsDetail(id string, page int) ([]SavingsDetail, error)
-	AccountEnroll() error
+	AccountEnrroll() error
 }
 
 type client struct {
@@ -72,13 +72,16 @@ func NewClient() (Client, error) {
 	// l := log.New(nullf, "", log.LstdFlags)
 	l := log.Default()
 
+	baseURL := `https://sucursalpersonas.transaccionesbancolombia.com`
 	return &client{
 		httpClient: httpClient,
 		log:        l,
-		baseURL:    `https://sucursalpersonas.transaccionesbancolombia.com`,
+		baseURL:    baseURL,
 		aditionalHeaders: map[string]string{
 			"User-Agent":       "Mozilla/5.0 (X11; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0",
 			"X-Requested-With": "XMLHttpRequest",
+			"Referer":          baseURL + "/cb/pages/jsp/home/index.jsp",
+			"Accept-Language":  "en-US,es-CO;q=0.7,en;q=0.3",
 			// req.Header.Set("Accept", "*")
 			// req.Header.Set("Accept-Language", "en-US,en;q=0.5")
 			// req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -369,6 +372,11 @@ func (c *client) Login(username, password string) error {
 		return fmt.Errorf("could not load mainPage: %w", err)
 	}
 
+	err = c.postLogin()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -590,14 +598,18 @@ func (f *fecha) UnmarshalJSON(data []byte) error {
 	return err
 }
 
+func getND() string {
+	now := time.Now()
+	return strconv.FormatInt(now.UnixNano(), 10)[:13]
+}
+
 func (c *client) GetSavingsDetail(id string, page int) ([]SavingsDetail, error) {
 	err := c.preGetSavingsDetail(id, page)
 	if err != nil {
 		return nil, err
 	}
 
-	now := time.Now()
-	nd := strconv.FormatInt(now.UnixNano(), 10)[:13]
+	nd := getND()
 
 	u := fmt.Sprintf(`%s/cb/pages/jsp/account/getSavingsDetailAction.action?CSRF_TOKEN=%s`, c.baseURL, c.csrfToken)
 	bodyStr := fmt.Sprintf(`_search=false&nd=%s&rows=-1&page=1&sidx=date&sord=desc`, nd)
@@ -622,23 +634,63 @@ func (c *client) GetSavingsDetail(id string, page int) ([]SavingsDetail, error) 
 	return response.GridModel, nil
 }
 
-func (c *client) AccountEnroll() error {
+func encodeUnescaped(v url.Values) string {
+	if v == nil {
+		return ""
+	}
+	var buf strings.Builder
+	for k, vs := range v {
+		for _, v := range vs {
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(k)
+			buf.WriteByte('=')
+			buf.WriteString(v)
+		}
+	}
+	return buf.String()
+}
+
+func (c *client) AccountEnrroll() error {
 	var err error
 
-	cst, err := url.QueryUnescape(c.cst)
+	// err = c.getPaymentDetail(CreditCard)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// err = c.getPaymentDetail(Credits)
+	// if err != nil {
+	// 	return err
+	// }
+
+	err = c.messageCenterLoadConfigurationCIC()
 	if err != nil {
-		return fmt.Errorf("could not unescape cst: %w", err)
+		return err
 	}
+
+	err = c.messageCenterLanding()
+	if err != nil {
+		return err
+	}
+
+	err = c.getMessagesForceCIC()
+	if err != nil {
+		return err
+	}
+
+	urlMenu := "/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp"
 
 	u := fmt.Sprintf(`%s/cb/pages/jsp/security/invokeSecondPass.jsp?cst=%s`, c.baseURL, c.cst)
 	bodyValues := url.Values{}
-	bodyValues.Add("urlreturn", "/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp")
+	bodyValues.Add("urlreturn", urlMenu)
 	bodyValues.Add("menu", "TRANSFER")
 	bodyValues.Add("sub", "TIC")
 	bodyValues.Add("wizard", "N")
 	bodyValues.Add("CSRF_TOKEN", c.csrfToken)
-	bodyValues.Add("cst", cst)
-	body := strings.NewReader(bodyValues.Encode())
+	bodyValues.Add("cst", c.cst)
+	body := strings.NewReader(encodeUnescaped(bodyValues))
 
 	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
 	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
@@ -648,12 +700,24 @@ func (c *client) AccountEnroll() error {
 	_ = resp.Body.Close()
 
 	u = fmt.Sprintf(`%s/cb/pages/jsp-ns/olb/GetOtpServicesInfo?cst=%s`, c.baseURL, c.cst)
-	bodyValues = url.Values{}
-	bodyValues.Add("CSRF_TOKEN", c.csrfToken)
-	bodyValues.Add("cst", cst)
-	body = strings.NewReader(bodyValues.Encode())
+	body = strings.NewReader(fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst))
 
 	doc, err := c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
+	if err != nil {
+		return err
+	}
+
+	err = c.invokeActionError("")
+	if err != nil {
+		return err
+	}
+
+	err = c.messageCenterMenu()
+	if err != nil {
+		return err
+	}
+
+	err = c.getMessagesForceCIC()
 	if err != nil {
 		return err
 	}
@@ -676,11 +740,11 @@ func (c *client) AccountEnroll() error {
 		fmt.Println()
 		otp := string(bytePassword)
 
-		autenticationOdaForm := getElementByID(doc, "autenticationOdaForm")
-		if autenticationOdaForm == nil {
-			html.Render(os.Stderr, doc)
-			return fmt.Errorf("could not find login user form")
-		}
+		// autenticationOdaForm := getElementByID(doc, "autenticationOdaForm")
+		// if autenticationOdaForm == nil {
+		// 	html.Render(os.Stderr, doc)
+		// 	return fmt.Errorf("could not find login user form")
+		// }
 
 		t1Assertion := parseT1Assertion(doc)
 		// keyboardSrc := parseKeyboardContent(doc)
@@ -690,14 +754,15 @@ func (c *client) AccountEnroll() error {
 		// 	return fmt.Errorf("could not parse keyboard: %w", err)
 		// }
 		// keyMap := parseKeyboardMap(keyboardNode)
-		fmt.Println(otp)
+		// fmt.Println(otp)
 		// otp = mapPassword(keyMap, otp)
 		// fmt.Println(otp)
 		initRngPool()
 		idSs := processPassword(otp, t1Assertion)
 		fmt.Println(idSs)
-		action := getAttribute(autenticationOdaForm, "action")
-		fmt.Println(action)
+		action := parseAjaxRequestURL(doc)
+		// action := getAttribute(autenticationOdaForm, "action")
+		// fmt.Println(action)
 		// errorTexto
 		bodyValues = url.Values{
 			"softoken":   []string{idSs},
@@ -724,35 +789,32 @@ func (c *client) AccountEnroll() error {
 		return fmt.Errorf("unexpected error")
 	}
 
-	bodyValues = url.Values{"TOKEN": []string{token}}
-	body = strings.NewReader(bodyValues.Encode())
-	queryParams := url.Values{}
-	queryParams.Set("CSRF_TOKEN", c.csrfToken)
-	queryParams.Set("urlMenu", "/cb/pages/jsp/security/sessionInvoke.jsp")
-	queryParams.Set("cst", cst)
-
-	u = fmt.Sprintf("%s/cb/pages/jsp/security/sessionInvoke.jsp?menu=TRANSFER&sub=TIC&security_domain=OTP&%s",
-		c.baseURL, queryParams.Encode())
+	body = strings.NewReader(`TOKEN=` + url.QueryEscape(token))
+	u = fmt.Sprintf("%s/cb/pages/jsp/security/sessionInvoke.jsp?CSRF_TOKEN=%s&menu=TRANSFER&sub=TIC&urlMenu=%s&security_domain=OTP&cst=%s",
+		c.baseURL, c.csrfToken, "/cb/pages/jsp/security/sessionInvoke.jsp", c.cst)
 
 	doc, err = c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
 	if err != nil {
 		return err
 	}
-	tokenMada, err := url.QueryUnescape(parseTokenMada(doc))
-	if err != nil {
-		return fmt.Errorf("could not unescape mada token: %w", err)
-	}
+	tokenMada := parseTokenMada(doc)
+	// tokenMada, err := url.QueryUnescape(parseTokenMada(doc))
+	// if err != nil {
+	// 	return fmt.Errorf("could not unescape mada token: %w", err)
+	// }
 	u = fmt.Sprintf(`%s/cb/pages/jsp-ns/validateSecondPasswordFromMada.action?cst=%s`, c.baseURL, c.cst)
 	bodyValues = url.Values{}
-	bodyValues.Set("tokenMada", tokenMada)
+	// bodyValues.Set("tokenMada", tokenMada)
 	bodyValues.Set("menu", "TRANSFER")
 	bodyValues.Set("sub", "TIC")
-	bodyValues.Set("urlMenu", `/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp`)
+	// bodyValues.Set("urlMenu", `/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp`)
 	bodyValues.Set("flowid", "null")
 	bodyValues.Set("security_domain", "OTP")
 	bodyValues.Set("CSRF_TOKEN", c.csrfToken)
-	bodyValues.Set("cst", cst)
-	body = strings.NewReader(bodyValues.Encode())
+	// bodyValues.Set("cst", c.cst)
+	body = strings.NewReader(`tokenMada=` + tokenMada + `&` + bodyValues.Encode() +
+		`&urlMenu=` + urlMenu + `&cst=` + c.cst)
+
 	resp, err = c.requestWithHeaders(http.MethodPost, u, body, headers)
 	if err != nil {
 		return err
@@ -763,9 +825,9 @@ func (c *client) AccountEnroll() error {
 	bodyValues = url.Values{}
 	bodyValues.Set("flowid", "null")
 	bodyValues.Set("security_domain", "OTP")
-	bodyValues.Set("CSRF_TOKEN", c.csrfToken)
-	bodyValues.Set("cst", cst)
-	body = strings.NewReader(bodyValues.Encode())
+	// bodyValues.Set("CSRF_TOKEN", c.csrfToken)
+	// bodyValues.Set("cst", c.cst)
+	body = strings.NewReader(bodyValues.Encode() + fmt.Sprintf(`&CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst))
 	resp, err = c.requestWithHeaders(http.MethodPost, u, body, headers)
 	if err != nil {
 		return err
@@ -782,16 +844,22 @@ func (c *client) AccountEnroll() error {
 	_ = html.Render(os.Stderr, doc)
 
 	// -----------
-	if bankGroups, err := c.GetBankGroups(); err != nil {
+	if productTypes, err := c.GetProductTypes(); err != nil {
 		log.Println(err)
 	} else {
-		fmt.Printf("bankGroups: %v\n", bankGroups)
+		fmt.Printf("productTypes: %v\n", productTypes)
 	}
 
 	if productTypes, err := c.GetProductTypes(); err != nil {
 		log.Println(err)
 	} else {
 		fmt.Printf("productTypes: %v\n", productTypes)
+	}
+
+	if bankGroups, err := c.GetBankGroups(); err != nil {
+		log.Println(err)
+	} else {
+		fmt.Printf("bankGroups: %v\n", bankGroups)
 	}
 
 	if documentTypes, err := c.GetDocumentTypes(); err != nil {
@@ -806,13 +874,13 @@ func (c *client) AccountEnroll() error {
 		fmt.Printf("banks: %v\n", banks)
 	}
 
-	if r, err := c.GetBanks(); err != nil {
-		log.Println(err)
-	} else {
-		fmt.Printf("r: %v\n", r)
-	}
 	// -----------
 
+	/*
+		 curl -i -s -k -X  'POST' -H 'Content-Length: 103'   -H 'Content-Type: application/x-www-form-urlencoded'  -H 'Cookie: JSESSIONID=PfMywXIH0jEfMB6+BJ1lHsG0; NSC_JOr2zhh2e44kdkqd4uupeqdgxr1z1c0=28d4a3da96b41259453c630389e9f27b968597ccb6f7ebc43f41db64e6ee8f12d04574f6; __cflb=02DiuF7aX6zsQEVJrpNgCqfZ7XAJa8kSz4UWq2yrdtctt'  \
+			--data-binary $'CSRF_TOKEN=4098441916498417831&cst=H86r%2BYTjlgt2XGAC2yNdSSxWuSNa8lGiNXgw8aPBqRpKYQjd%2FwQLzG3aXJnrbwGy' \
+			'https://sucursalpersonas.transaccionesbancolombia.com/cb/pages/jsp-ns/olb/EnrollACHAccountConfirmation'
+	*/
 	u = fmt.Sprintf(`%s/cb/pages/jsp/account/VerifyEnrollment.action?cst=%s`, c.baseURL, c.cst)
 	bodyValues = url.Values{}
 	bodyValues.Set("bankToId", "0007")
@@ -820,16 +888,16 @@ func (c *client) AccountEnroll() error {
 	bodyValues.Set("accountType2", "7")
 	bodyValues.Set("fiduciariaTypes", "0")
 	bodyValues.Set("accountNumber", "99999999999")
-	bodyValues.Set("accountNickname", "Nick Name")
+	bodyValues.Set("accountNickname", "NickName")
 	bodyValues.Set("documentType", "CC")
 	bodyValues.Set("documentNumber", "111111111111111")
 	bodyValues.Set("accountType", "7")
 	bodyValues.Set("productName", "")
 
-	bodyValues.Set("devicePrint", "")
-	bodyValues.Set("CSRF_TOKEN", c.csrfToken)
-	bodyValues.Set("cst", cst)
-	body = strings.NewReader(bodyValues.Encode())
+	// bodyValues.Set("devicePrint", "")
+	// bodyValues.Set("CSRF_TOKEN", c.csrfToken)
+	// bodyValues.Set("cst", c.cst)
+	body = strings.NewReader(bodyValues.Encode() + fmt.Sprintf(`&CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst))
 	doc, err = c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, headers))
 	if err != nil {
 		return err
@@ -840,15 +908,17 @@ func (c *client) AccountEnroll() error {
 	}
 
 	// _ = html.Render(os.Stderr, doc)
+	// c.log.Println("waiting 3 seconds")
+	// <-time.After(time.Second * 3)
+	// c.log.Println("continuing...")
 
 	u = fmt.Sprintf(`%s/cb/pages/jsp-ns/olb/EnrollACHAccountConfirmation?cst=%s`, c.baseURL, c.cst)
 	body = strings.NewReader(fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst))
 	h := map[string]string{
-		"Accept":          "*/*",
-		"Accept-Language": "en-US,es-CO;q=0.7,en;q=0.3",
-		"Content-Type":    "application/x-www-form-urlencoded",
-		"Origin":          "https://sucursalpersonas.transaccionesbancolombia.com",
-		"Referer":         "https://sucursalpersonas.transaccionesbancolombia.com/cb/pages/jsp/home/index.jsp",
+		"Accept":       "*/*",
+		"Content-Type": "application/x-www-form-urlencoded",
+		// "Origin":          "https://sucursalpersonas.transaccionesbancolombia.com",
+		// "Referer":         "https://sucursalpersonas.transaccionesbancolombia.com/cb/pages/jsp/home/index.jsp",
 	}
 	doc, err = c.loadHTML(c.requestWithHeaders(http.MethodPost, u, body, h))
 	if err != nil {
@@ -949,4 +1019,237 @@ func (c *client) GetBanks() (GetBanksResponse, error) {
 	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
 
 	return resp, err
+}
+
+func (c *client) invokeActionError(code string) error {
+	var resp map[string]interface{}
+	u := c.baseURL + `/cb/pages/jsp/errors/ConfigFunctionalityErrorCode.action?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`err=%s&CSRF_TOKEN=%s&cst=%s`,
+		url.QueryEscape(code), c.csrfToken, c.cst)
+
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
+	c.log.Printf("resp: %v\n", resp)
+	return err
+}
+
+func (c *client) messageCenterLoadConfigurationCIC() error {
+	var resp map[string]interface{}
+	u := c.baseURL + `/cb/pages/jsp/messagecenter/MessageCenterLoadConfigurationCIC.action?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
+	c.log.Printf("resp: %v\n", resp)
+	return err
+}
+
+func (c *client) messageCenterLanding() error {
+	u := c.baseURL + `/cb/pages/jsp/messagecenter/MessageCenterLanding.jsp?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+
+	return nil
+}
+
+func (c *client) messageCenterMenu() error {
+	u := c.baseURL + `/cb/pages/jsp/messagecenter/MessageCenterMenu.jsp?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+
+	return nil
+}
+
+func (c *client) getMessagesForceCIC() error {
+	var resp map[string]interface{}
+	u := fmt.Sprintf(`%s/cb/pages/jsp/messagecenter/GetMessagesForceCIC.action?CSRF_TOKEN=%s&cst=%s`,
+		c.baseURL, c.csrfToken, c.cst)
+
+	nd := getND()
+	bodyStr := fmt.Sprintf(`_search=false&nd=%s&rows=0&page=1&sidx=receptionDate&sord=desc`, nd)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
+	if err != nil {
+		return err
+	}
+
+	c.log.Printf("resp: %v\n", resp)
+
+	return nil
+}
+
+func (c *client) gATokenGeneration(idGA string) error {
+	var resp map[string]interface{}
+	u := c.baseURL + `/cb/pages/jsp/ga/GATokenGeneration.action`
+
+	bodyStr := fmt.Sprintf(`id_ga=%s&timeZone=GMT-0500&cst=%s&CSRF_TOKEN=%s`, idGA, c.cst, c.csrfToken)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
+	if err != nil {
+		return err
+	}
+
+	c.log.Printf("resp: %v\n", resp)
+
+	return nil
+}
+
+func (c *client) getUpdateDynamicData() error {
+	var resp map[string]interface{}
+	u := c.baseURL + `/cb/pages/jsp/updateData/getUpdateDynamicData.action`
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
+	c.log.Printf("resp: %v\n", resp)
+	return err
+}
+
+func (c *client) preApprovedAction() error {
+	var resp map[string]interface{}
+	u := c.baseURL + `/cb/pages/jsp-ns/olb/PreApprovedAction?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	err := c.requestJSONWithHeaders(http.MethodPost, u, body, &resp, headers)
+	c.log.Printf("resp: %v\n", resp)
+	return err
+}
+
+func (c *client) usersPreferencesAction() error {
+	u := c.baseURL + `/cb/pages/jsp-ns/olb/UsersPreferencesAction`
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	return err
+}
+
+func (c *client) userSecondPass() error {
+	u := c.baseURL + `/cb/pages/jsp/notification/userSecondPass.action?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	return err
+}
+
+func (c *client) personalizeProductsNameDataEntry() error {
+	u := c.baseURL + `/cb/pages/jsp-ns/olb/PersonalizeProductsNameDataEntry?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	return err
+}
+
+func (c *client) changeNameACHDataEntry() error {
+	u := c.baseURL + `/cb/pages/jsp-ns/olb/ChangeNameACHDataEntry?cst=` + c.cst
+
+	bodyStr := fmt.Sprintf(`CSRF_TOKEN=%s&cst=%s`, c.csrfToken, c.cst)
+	body := strings.NewReader(bodyStr)
+	headers := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	resp, err := c.requestWithHeaders(http.MethodPost, u, body, headers)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	return err
+}
+
+type PaymentType string
+
+const (
+	CreditCard PaymentType = "CREDIT_CARD"
+	Credits    PaymentType = "CREDITS"
+)
+
+func (c *client) getPaymentDetail(paymentType PaymentType) error {
+	var resp map[string]interface{}
+	u := fmt.Sprintf(`%s/cb/pages/jsp/account/GetPaymentDetailAction.action?type=%s&cst=%s`, c.baseURL, paymentType, c.cst)
+
+	headers := map[string]string{"Accept": "*/*"}
+	err := c.requestJSONWithHeaders(http.MethodGet, u, nil, &resp, headers)
+	c.log.Printf("resp: %v\n", resp)
+	return err
+}
+
+func (c *client) postLogin() error {
+	var err error
+	err = c.changeNameACHDataEntry()
+	if err != nil {
+		return err
+	}
+
+	err = c.personalizeProductsNameDataEntry()
+	if err != nil {
+		return err
+	}
+
+	err = c.userSecondPass()
+	if err != nil {
+		return err
+	}
+
+	err = c.usersPreferencesAction()
+	if err != nil {
+		return err
+	}
+
+	err = c.preApprovedAction()
+	if err != nil {
+		return err
+	}
+
+	err = c.getUpdateDynamicData()
+	if err != nil {
+		return err
+	}
+
+	err = c.gATokenGeneration("anuncio-0")
+	if err != nil {
+		return err
+	}
+	err = c.gATokenGeneration("anuncio-1")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

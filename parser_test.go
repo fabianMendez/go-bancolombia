@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -306,6 +307,10 @@ func TestParseJQuerySummary(t *testing.T) {
 			filename: "./testdata/response11.html",
 			expected: "Cuenta No existe en Depositos CODIGO:BC 917",
 		},
+		{
+			filename: "./testdata/response13.html",
+			expected: "En este momento por su seguridad, no es posible continuar la transacción. Intente más tarde.",
+		},
 	}
 
 	for _, tt := range tests {
@@ -318,6 +323,86 @@ func TestParseJQuerySummary(t *testing.T) {
 			require.NoError(t, err)
 
 			actual := parseJQuerySummary(doc)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestParseAjaxRequestURL(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{
+			filename: "./testdata/response12.html",
+			expected: "/mua/procsec/doRequestOda?scis=Z0kgNHsCN8uNWvU7ZXw1gELFFa%2B8FUb2blWOfMBWYuxO4cqNnpEchXwd6qulgnk%2B",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			f, err := os.Open(tt.filename)
+			require.NoError(t, err)
+			defer f.Close()
+
+			doc, err := html.Parse(f)
+			require.NoError(t, err)
+
+			actual := parseAjaxRequestURL(doc)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestEncodeDecodeToken(t *testing.T) {
+	tests := []struct {
+		name     string
+		token    string
+		expected string
+	}{
+		{
+			name:     "TOKEN",
+			token:    `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`,
+			expected: `3iRtr%2BDa4L70ieSZhgDSiNBC0UKZ3mdCqr84HRuiSrFa0P4fHw2pXJ0wNntI4lDM3cADR1lqGdokt6ATPySs6sT2cHpaWZpfiRsuB6QtoUQeFv7Hiuc4NT63d26%2B2eOuSj22LEwSOFVCYOsViEvcMqcJCY8KcIZ7o5HvyAuavxgTjnvpy6K6Qd5cAG%2B7mYSMS8RCxivNH5FERVgYBlpB3iREUgyrnDHHPvI0vYGznIFQQAAHHciKN%2BfeViNOS0OhFXIYHxvA9dA1g4HpSOzoucAwjvfidvSzB24bYFWeoRKgSAKLEdyM1KwP%2BeeSGsf5SkxkoPUflnmNvGt2rGSaf6HihV4YJsuPjnb8%2BxheM3aeFSPNj1oWp0zvlkx0pGK1eWo9iinNks3oqQV0BZm9c8T4cad2lKXc1gYz9qKhsOecQYw5Bx4hkbTWQo2%2BneACNskvOILvpL4CE72FdaqllgsiOaRGEAOhYqX7Qap72zvN9pQgYo%2F1MOsZzxwwxsqvbU%2BNHB6Ul1QE3LJ77FFny0oMWuYTtz1C%2FhwzKqNKZyiOoarsHgFAD4btDEf99JIRmfQHhjae5xLrVQHlLaMzAG3Ixyolliz2mtlQORi%2F4%2BlUA9vFkjdHpaYxAzqTPtwYi%2BqDvwoevYGOlyBORTFbn%2BblttZRrEJvQKw8QQY9ypq64iwmZb8ligXljld48MC7%2Bpqt4i0qsJzjjSx19k0SM3fKrbkzpW9pMgzIgW%2BiAZp0Gu5X%2F7LvSFyZTNFSVd4BGKlT7K5dMYWRBSxtmrlAyHK%2FQ8FDvWEwq1nikrMzHqSy7QCTDy6bdGL%2FN6qKFA1ITx504w%2FttvBbVo1Fpu2v3WrTK1qt5EsWkcuxEqG1zEHrPWK1%2FxkSk7tFlzjh0f93PrN6H2q8w9hENxqp9dUDbEisOnkY3t96R2iqeLGmpGVl5EyRx67xIEPIFuL%2FsbAW4988wedCxRS1MO26d6NK8Xxm4pCQvievPqfl5xTHXJvPkqSFXHHqli1TRGtK2NrcrpgAw0bnTgZkGPETEq%2FMw8fVNcB6JlGwbizaX%2Fy73HnHh9FvaK31LAKIM%2BJGU2%2FEVDjvMxmnkCeizjiC%2Bce1ZdYc4pYyY0KdJf1El56cSEMqOFShA8GW%2FTH1sefSr%2B4BCeZ8VFgKJV188skvr4%2BzGIUju7ZoaHZoX4fyxdt8fhz9Iae8kUo9hKbLIzJZQS5tQ7lB3GLcvHFKvoCZJUxBUifA0m6N2toKsRH%2B9TMuC0rhvm%2F2OrlQGWgih8HbHFMutFOZPffDjxCYX0ZdUVllMDlkZ9IMuCoYeGz7dhcaW0LbHsfVZzCsgPMqHV3suofBJJ0YYQdgpF5N54md9Lj6tIWFyhz5Atn9hTrQxNLJfLPgWwDmfGlorYt7DFTRAHqXDMy30qFO8lf2vVLttb7n%2FvWSFYNAt4agCDpWJzJTUDp7riCZLLS5cRdKstGUwP7N1Dr3DmOnSt%2BA6GoEsmxOAk6pl%2FFaUXM9F8%2BditxBINhHY%2BfJqpEFwJDqxz8oh4xrApWsxr1LaV0VGso4KoSGNL5KaK%2F%2BVvM%2BE%2FM0BF4dXmDgYZExvQPw%2FAWOxJTlgC1keVQ1LeQprLxEuVh2q1U9eMz32XXD6AGDbQMAYIQg05IiEARPFXd3bHUki%2F0ZUGPfLBm3GViWPxVTf4i%2B4Tc2Y1H3eF8fgpDaB6OUJYKtRajA2PVfq4vzUR66F5%2BSQs3etuetTnn7FiGokboFxg7fpoA61CD8QqYgfmhNJRAg4iN3uxgc44rEZXByNpZNvdW13vrwthREeUsI%2BKv3AACDVVFVpMCCZ07ynvGHO7LrPp%2B6ww9CnIFmQ6DZSqXvyAx6qxEPF9D3z4OdoRdvCbBvjV0GJSjA5NHauY%2Fue5Cpmp5EayHy3uJF7m8fjxexLDr2ffeGj%2BVLcfWEF3%2BuAPBPEKwEM%2FWHXmDRzBh6AepfNtL6fT5qZTRdh1SQAMHyzniHhZ1k%2BchgzIrFTuQvQz8K8wOQtGZzeWuc2I4Nu0Ai5wVuL1uJe2TpXxp64PJGNbay2r7I3hUEJGt3E5T8KGvaNn4NJT9KiJnr4uVbgwAsoyBUzPya%2FqKVl7%2BtBgc2L4ApGNlFLw%3D%3D`,
+		}, {
+			name:     "tokenMada",
+			token:    `3iRtr%2BDa4L70ieSZhgDSiNBC0UKZ3mdCqr84HRuiSrFa0P4fHw2pXJ0wNntI4lDM3cADR1lqGdokt6ATPySs6sT2cHpaWZpfiRsuB6QtoUQeFv7Hiuc4NT63d26%2B2eOuSj22LEwSOFVCYOsViEvcMqcJCY8KcIZ7o5HvyAuavxgTjnvpy6K6Qd5cAG%2B7mYSMS8RCxivNH5FERVgYBlpB3iREUgyrnDHHPvI0vYGznIFQQAAHHciKN%2BfeViNOS0OhFXIYHxvA9dA1g4HpSOzoucAwjvfidvSzB24bYFWeoRKgSAKLEdyM1KwP%2BeeSGsf5SkxkoPUflnmNvGt2rGSaf6HihV4YJsuPjnb8%2BxheM3aeFSPNj1oWp0zvlkx0pGK1eWo9iinNks3oqQV0BZm9c8T4cad2lKXc1gYz9qKhsOecQYw5Bx4hkbTWQo2%2BneACNskvOILvpL4CE72FdaqllgsiOaRGEAOhYqX7Qap72zvN9pQgYo%2F1MOsZzxwwxsqvbU%2BNHB6Ul1QE3LJ77FFny0oMWuYTtz1C%2FhwzKqNKZyiOoarsHgFAD4btDEf99JIRmfQHhjae5xLrVQHlLaMzAG3Ixyolliz2mtlQORi%2F4%2BlUA9vFkjdHpaYxAzqTPtwYi%2BqDvwoevYGOlyBORTFbn%2BblttZRrEJvQKw8QQY9ypq64iwmZb8ligXljld48MC7%2Bpqt4i0qsJzjjSx19k0SM3fKrbkzpW9pMgzIgW%2BiAZp0Gu5X%2F7LvSFyZTNFSVd4BGKlT7K5dMYWRBSxtmrlAyHK%2FQ8FDvWEwq1nikrMzHqSy7QCTDy6bdGL%2FN6qKFA1ITx504w%2FttvBbVo1Fpu2v3WrTK1qt5EsWkcuxEqG1zEHrPWK1%2FxkSk7tFlzjh0f93PrN6H2q8w9hENxqp9dUDbEisOnkY3t96R2iqeLGmpGVl5EyRx67xIEPIFuL%2FsbAW4988wedCxRS1MO26d6NK8Xxm4pCQvievPqfl5xTHXJvPkqSFXHHqli1TRGtK2NrcrpgAw0bnTgZkGPETEq%2FMw8fVNcB6JlGwbizaX%2Fy73HnHh9FvaK31LAKIM%2BJGU2%2FEVDjvMxmnkCeizjiC%2Bce1ZdYc4pYyY0KdJf1El56cSEMqOFShA8GW%2FTH1sefSr%2B4BCeZ8VFgKJV188skvr4%2BzGIUju7ZoaHZoX4fyxdt8fhz9Iae8kUo9hKbLIzJZQS5tQ7lB3GLcvHFKvoCZJUxBUifA0m6N2toKsRH%2B9TMuC0rhvm%2F2OrlQGWgih8HbHFMutFOZPffDjxCYX0ZdUVllMDlkZ9IMuCoYeGz7dhcaW0LbHsfVZzCsgPMqHV3suofBJJ0YYQdgpF5N54md9Lj6tIWFyhz5Atn9hTrQxNLJfLPgWwDmfGlorYt7DFTRAHqXDMy30qFO8lf2vVLttb7n%2FvWSFYNAt4agCDpWJzJTUDp7riCZLLS5cRdKstGUwP7N1Dr3DmOnSt%2BA6GoEsmxOAk6pl%2FFaUXM9F8%2BditxBINhHY%2BfJqpEFwJDqxz8oh4xrApWsxr1LaV0VGso4KoSGNL5KaK%2F%2BVvM%2BE%2FM0BF4dXmDgYZExvQPw%2FAWOxJTlgC1keVQ1LeQprLxEuVh2q1U9eMz32XXD6AGDbQMAYIQg05IiEARPFXd3bHUki%2F0ZUGPfLBm3GViWPxVTf4i%2B4Tc2Y1H3eF8fgpDaB6OUJYKtRajA2PVfq4vzUR66F5%2BSQs3etuetTnn7FiGokboFxg7fpoA61CD8QqYgfmhNJRAg4iN3uxgc44rEZXByNpZNvdW13vrwthREeUsI%2BKv3AACDVVFVpMCCZ07ynvGHO7LrPp%2B6ww9CnIFmQ6DZSqXvyAx6qxEPF9D3z4OdoRdvCbBvjV0GJSjA5NHauY%2Fue5Cpmp5EayHy3uJF7m8fjxexLDr2ffeGj%2BVLcfWEF3%2BuAPBPEKwEM%2FWHXmDRzBh6AepfNtL6fT5qZTRdh1SQAMHyzniHhZ1k%2BchgzIrFTuQvQz8K8wOQtGZzeWuc2I4Nu0Ai5wVuL1uJe2TpXxp64PJGNbay2r7I3hUEJGt3E5T8KGvaNn4NJT9KiJnr4uVbgwAsoyBUzPya%2FqKVl7%2BtBgc2L4ApGNlFLw%3D%3D`,
+			expected: `3iRtr%2BDa4L70ieSZhgDSiNBC0UKZ3mdCqr84HRuiSrFa0P4fHw2pXJ0wNntI4lDM3cADR1lqGdokt6ATPySs6sT2cHpaWZpfiRsuB6QtoUQeFv7Hiuc4NT63d26%2B2eOuSj22LEwSOFVCYOsViEvcMqcJCY8KcIZ7o5HvyAuavxgTjnvpy6K6Qd5cAG%2B7mYSMS8RCxivNH5FERVgYBlpB3iREUgyrnDHHPvI0vYGznIFQQAAHHciKN%2BfeViNOS0OhFXIYHxvA9dA1g4HpSOzoucAwjvfidvSzB24bYFWeoRKgSAKLEdyM1KwP%2BeeSGsf5SkxkoPUflnmNvGt2rGSaf6HihV4YJsuPjnb8%2BxheM3aeFSPNj1oWp0zvlkx0pGK1eWo9iinNks3oqQV0BZm9c8T4cad2lKXc1gYz9qKhsOecQYw5Bx4hkbTWQo2%2BneACNskvOILvpL4CE72FdaqllgsiOaRGEAOhYqX7Qap72zvN9pQgYo%2F1MOsZzxwwxsqvbU%2BNHB6Ul1QE3LJ77FFny0oMWuYTtz1C%2FhwzKqNKZyiOoarsHgFAD4btDEf99JIRmfQHhjae5xLrVQHlLaMzAG3Ixyolliz2mtlQORi%2F4%2BlUA9vFkjdHpaYxAzqTPtwYi%2BqDvwoevYGOlyBORTFbn%2BblttZRrEJvQKw8QQY9ypq64iwmZb8ligXljld48MC7%2Bpqt4i0qsJzjjSx19k0SM3fKrbkzpW9pMgzIgW%2BiAZp0Gu5X%2F7LvSFyZTNFSVd4BGKlT7K5dMYWRBSxtmrlAyHK%2FQ8FDvWEwq1nikrMzHqSy7QCTDy6bdGL%2FN6qKFA1ITx504w%2FttvBbVo1Fpu2v3WrTK1qt5EsWkcuxEqG1zEHrPWK1%2FxkSk7tFlzjh0f93PrN6H2q8w9hENxqp9dUDbEisOnkY3t96R2iqeLGmpGVl5EyRx67xIEPIFuL%2FsbAW4988wedCxRS1MO26d6NK8Xxm4pCQvievPqfl5xTHXJvPkqSFXHHqli1TRGtK2NrcrpgAw0bnTgZkGPETEq%2FMw8fVNcB6JlGwbizaX%2Fy73HnHh9FvaK31LAKIM%2BJGU2%2FEVDjvMxmnkCeizjiC%2Bce1ZdYc4pYyY0KdJf1El56cSEMqOFShA8GW%2FTH1sefSr%2B4BCeZ8VFgKJV188skvr4%2BzGIUju7ZoaHZoX4fyxdt8fhz9Iae8kUo9hKbLIzJZQS5tQ7lB3GLcvHFKvoCZJUxBUifA0m6N2toKsRH%2B9TMuC0rhvm%2F2OrlQGWgih8HbHFMutFOZPffDjxCYX0ZdUVllMDlkZ9IMuCoYeGz7dhcaW0LbHsfVZzCsgPMqHV3suofBJJ0YYQdgpF5N54md9Lj6tIWFyhz5Atn9hTrQxNLJfLPgWwDmfGlorYt7DFTRAHqXDMy30qFO8lf2vVLttb7n%2FvWSFYNAt4agCDpWJzJTUDp7riCZLLS5cRdKstGUwP7N1Dr3DmOnSt%2BA6GoEsmxOAk6pl%2FFaUXM9F8%2BditxBINhHY%2BfJqpEFwJDqxz8oh4xrApWsxr1LaV0VGso4KoSGNL5KaK%2F%2BVvM%2BE%2FM0BF4dXmDgYZExvQPw%2FAWOxJTlgC1keVQ1LeQprLxEuVh2q1U9eMz32XXD6AGDbQMAYIQg05IiEARPFXd3bHUki%2F0ZUGPfLBm3GViWPxVTf4i%2B4Tc2Y1H3eF8fgpDaB6OUJYKtRajA2PVfq4vzUR66F5%2BSQs3etuetTnn7FiGokboFxg7fpoA61CD8QqYgfmhNJRAg4iN3uxgc44rEZXByNpZNvdW13vrwthREeUsI%2BKv3AACDVVFVpMCCZ07ynvGHO7LrPp%2B6ww9CnIFmQ6DZSqXvyAx6qxEPF9D3z4OdoRdvCbBvjV0GJSjA5NHauY%2Fue5Cpmp5EayHy3uJF7m8fjxexLDr2ffeGj%2BVLcfWEF3%2BuAPBPEKwEM%2FWHXmDRzBh6AepfNtL6fT5qZTRdh1SQAMHyzniHhZ1k%2BchgzIrFTuQvQz8K8wOQtGZzeWuc2I4Nu0Ai5wVuL1uJe2TpXxp64PJGNbay2r7I3hUEJGt3E5T8KGvaNn4NJT9KiJnr4uVbgwAsoyBUzPya%2FqKVl7%2BtBgc2L4ApGNlFLw%3D%3D`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := url.QueryEscape(tt.token)
+
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestEncodeUnescaped(t *testing.T) {
+	tests := []struct {
+		name     string
+		values   url.Values
+		expected string
+	}{
+		{
+			name: "TOKEN",
+			values: url.Values{
+				"urlreturn":  []string{"/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp"},
+				"menu":       []string{"TRANSFER"},
+				"sub":        []string{"TIC"},
+				"wizard":     []string{"N"},
+				"CSRF_TOKEN": []string{"6330126593134633089"},
+				"cst":        []string{"n3LAVtGvDsrC1SCbc6hciyG%2B4vcYM6dEdVaoVKHADAahZKe6Y0FT1m9079DAziYE"},
+			},
+			expected: `urlreturn=/cb/pages/jsp/account/enrrollProduct_invoke_from_menu.jsp&menu=TRANSFER&sub=TIC&wizard=N&CSRF_TOKEN=6330126593134633089&cst=n3LAVtGvDsrC1SCbc6hciyG%2B4vcYM6dEdVaoVKHADAahZKe6Y0FT1m9079DAziYE`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := encodeUnescaped(tt.values)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}

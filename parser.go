@@ -251,13 +251,33 @@ func parseJQuerySummary(node *html.Node) string {
 		ptn := `$("#summary")`
 		i := strings.Index(src, ptn)
 		if i != -1 {
-			content := getValueInside(src[i+len(ptn):], `.html('`, `')`)
+			var content string
+			src = src[i+len(ptn):]
+
+			if strings.HasPrefix(src, `.html($('<p>')`) {
+				content = getValueInside(src, `.html('`, `')`)
+			} else if strings.HasPrefix(src, `.html("`) {
+				content = getValueInside(src, `.html("`, `")`)
+			}
 			if content != "" {
 				node, err := html.Parse(strings.NewReader(content))
 				if err == nil {
 					return htmldom.GetInnerText(node)
 				}
 			}
+		}
+	}
+	return ""
+}
+
+func parseAjaxRequestURL(node *html.Node) string {
+	scripts := getAllElemenstByTag(node, "script")
+	for _, script := range scripts {
+		src := getInnerText(script)
+		ptn := `ajaxRequestWithParametersMuaCallback(`
+		i := strings.Index(src, ptn)
+		if i != -1 {
+			return getValueInside(src[i+len(ptn):], `"`, `"`)
 		}
 	}
 	return ""

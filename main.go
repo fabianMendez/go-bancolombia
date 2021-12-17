@@ -59,17 +59,17 @@ func main() {
 
 	defer cl.Logout()
 
-	balance, err := cl.GetDepositsBalance()
-	if err != nil {
-		log.Fatal("could not get deposits balance:", err)
-	}
-
-	err = cl.AccountEnroll()
+	err = cl.AccountEnrroll()
 	if err != nil {
 		log.Fatal("could not enroll account: ", err)
 	} else {
 		log.Println("account enrolled")
 		os.Exit(0)
+	}
+
+	balance, err := cl.GetDepositsBalance()
+	if err != nil {
+		log.Fatal("could not get deposits balance:", err)
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)

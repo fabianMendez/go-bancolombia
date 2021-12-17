@@ -1,0 +1,84 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" src="/cb/web/js/global/export.js?version=3.5.5.RC3"></script>
+
+<style>
+li {
+	margin-left: -38px !important;
+	list-style-type: none !important;
+}
+</style>
+
+
+
+
+	
+		<div class="errorDiv" id="tabError">
+			<div class="divTextMessage">
+				<span class="icon-error errorIcon"><span class="path1"></span><span class="path2"></span><span class="path3"></span></span>
+				<div class="errorTitulo">
+					Error
+				</div>
+				<div class="errorTexto" id="summary"></div>
+			</div>
+		</div>
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		Bancolombia.Alert.init('.bc-alert-error');
+		
+
+		
+
+		
+				$("#summary").html("En este momento por su seguridad, no es posible continuar la transacción. Intente más tarde.").text();
+			
+		
+	});
+			
+	
+	
+	function openPopUpDisplayError(url) {
+		window.open(url,'1398359412921','width=700,height=500,toolbar=0,menubar=0,location=0,status=1,scrollbars=1,resizable=1,left=0,top=0');
+	}
+	
+	jQuery("#btnLinkFidu").click( function () {
+		breadCrum_link('link_prod_afi');
+		ajaxRequestMenu("/cb/pages/jsp/funds/loadUrlFunds.action","PRODUCT","PFONDOSI","N");	
+	});
+
+</script>
+
+
