@@ -59,13 +59,13 @@ func main() {
 
 	defer cl.Logout()
 
-	err = cl.AccountEnrroll()
+	/*err = cl.AccountEnrroll()
 	if err != nil {
 		log.Fatal("could not enroll account: ", err)
 	} else {
 		log.Println("account enrolled")
 		os.Exit(0)
-	}
+	}*/
 
 	balance, err := cl.GetDepositsBalance()
 	if err != nil {
