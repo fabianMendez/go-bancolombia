@@ -38,6 +38,7 @@ type client struct {
 	refererURL       string
 	cst              string
 	csrfToken        string
+	rsa              *rsa
 }
 
 func NewClient() (Client, error) {
@@ -72,6 +73,9 @@ func NewClient() (Client, error) {
 	// l := log.New(nullf, "", log.LstdFlags)
 	l := log.Default()
 
+	r := new(rsa)
+	r.init()
+
 	baseURL := `https://sucursalpersonas.transaccionesbancolombia.com`
 	return &client{
 		httpClient: httpClient,
@@ -88,6 +92,7 @@ func NewClient() (Client, error) {
 			// req.Header.Set("Origin", c.baseURL)
 			// req.Header.Set("Referer", c.baseURL+"/cb/pages/jsp/home/index.jsp")
 		},
+		rsa: r,
 	}, nil
 }
 
@@ -263,8 +268,7 @@ func (c *client) Login(username, password string) error {
 	}
 	keyMap := parseKeyboardMap(keyboardNode)
 	password = mapPassword(keyMap, password)
-	initRngPool()
-	idSs := processPassword(password, t1Assertion)
+	idSs := c.rsa.processPassword(password, t1Assertion)
 	passwordInputName := parsePasswordInputName(doc)
 
 	action = getAttribute(loginUserForm, "action")
@@ -757,8 +761,7 @@ func (c *client) AccountEnrroll() error {
 		// fmt.Println(otp)
 		// otp = mapPassword(keyMap, otp)
 		// fmt.Println(otp)
-		initRngPool()
-		idSs := processPassword(otp, t1Assertion)
+		idSs := c.rsa.processPassword(otp, t1Assertion)
 		fmt.Println(idSs)
 		action := parseAjaxRequestURL(doc)
 		// action := getAttribute(autenticationOdaForm, "action")

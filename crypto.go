@@ -4,6 +4,9 @@ import (
 	"math"
 	"math/rand"
 	"strconv"
+	"strings"
+	"time"
+	"unicode"
 )
 
 type rsaKey struct {
@@ -30,8 +33,8 @@ func (k *rsaKey) doPublic(x bigInteger) bigInteger {
 	return x.modPowInt(k.e, k.n)
 }
 
-func (k *rsaKey) encrypt(text string) string {
-	m := pkcs1pad2(text, (k.n.bitLength()+7)>>3)
+func (k *rsaKey) encrypt(rng *randNumGen, text string) string {
+	m := pkcs1pad2(rng, text, (k.n.bitLength()+7)>>3)
 	c := k.doPublic(m)
 	h := c.toString(16)
 	if len(h)&1 == 0 {
@@ -758,61 +761,22 @@ func (bi bigInteger) invDigit() int64 {
 	return -y
 }
 
-func charCodeAt(s string, n int) rune {
-	i := 0
-	for _, r := range s {
-		if i == n {
-			return r
-		}
-		i++
-	}
-	return 0
-}
+const abc = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-var BI_RC map[rune]int
-
-// var BI_RC []int
-
-func intAt(s string, i int) int64 {
-	if BI_RC == nil {
-		BI_RC = map[rune]int{}
-
-		var rr rune
-
-		rr = '0'
-		for vv := 0; vv <= 9; vv++ {
-			BI_RC[rr] = vv
-			rr++
-		}
-		rr = 'a'
-		for vv := 10; vv < 36; vv++ {
-			BI_RC[rr] = vv
-			rr++
-		}
-		rr = 'A'
-		for vv := 10; vv < 36; vv++ {
-			BI_RC[rr] = vv
-			rr++
-		}
-	}
-
-	if c, found := BI_RC[charCodeAt(s, i)]; found {
-		return int64(c)
+// runeIndex returns the rune's index inside the alphabet
+//  - from "0" to "9" returns from 0 to 9
+//  - from "a" to "z" returns from 10 to 36
+//  - from "A" to "Z" returns from 10 to 36
+func runeIndex(r rune) int {
+	r = unicode.ToLower(r)
+	if strings.ContainsRune(abc, r) {
+		return strings.IndexRune(abc, r)
 	}
 	return -1
-
-	// c := s[i : i+1]
-	// fmt.Println()
-	// result, err := strconv.ParseInt(c, 10, 64)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// return result
 }
 
 func int2char(n int64) string {
-	const BI_RM = "0123456789abcdefghijklmnopqrstuvwxyz"
-	return string(BI_RM[n])
+	return string(abc[n])
 }
 
 func newBigInteger(s string, b int) bigInteger {
@@ -849,7 +813,7 @@ func newBigInteger(s string, b int) bigInteger {
 		if k == 8 {
 			x = int64(s[i] & 0xff)
 		} else {
-			x = intAt(s, i)
+			x = int64(runeIndex(rune(s[i])))
 		}
 		// fmt.Println(x)
 
@@ -969,7 +933,7 @@ func (b bigInteger) bitLength() int {
 	return b.DB*(b.t-1) + nbits(b.arr[b.t-1]^(b.s&b.DM))
 }
 
-func pkcs1pad2(s string, n int) bigInteger {
+func pkcs1pad2(rng *randNumGen, s string, n int) bigInteger {
 	if n < len(s)+11 {
 		panic("Message too long for RSA")
 	}
@@ -979,7 +943,7 @@ func pkcs1pad2(s string, n int) bigInteger {
 	i := len(s) - 1
 	for i >= 0 && n > 0 {
 		// fmt.Println(i, n)
-		c := charCodeAt(s, i)
+		c := rune(s[i])
 		i--
 		if c < 128 {
 			ba[n-1] = byte(c)
@@ -1003,14 +967,14 @@ func pkcs1pad2(s string, n int) bigInteger {
 
 	// fmt.Println(ba)
 
-	rng := secureRandom{}
+	srand := secureRandom{rng: rng}
 	x := make([]byte, 1)
 
 	for n > 2 {
 		x[0] = 0
 
 		for x[0] == 0 {
-			rng.nextBytes(x)
+			srand.nextBytes(x)
 			// fmt.Println(x[0])
 		}
 		ba[n-1] = x[0]
@@ -1033,11 +997,12 @@ func pkcs1pad2(s string, n int) bigInteger {
 }
 
 type secureRandom struct {
+	rng *randNumGen
 }
 
-func (sr secureRandom) nextBytes(ba []byte) {
+func (sr *secureRandom) nextBytes(ba []byte) {
 	for i := 0; i < len(ba); i++ {
-		ba[i] = rngGetByte()
+		ba[i] = sr.rng.getByte()
 	}
 }
 
@@ -1077,49 +1042,62 @@ func (rs *randomState) init(key []byte) {
 	// fmt.Println(rs.S)
 }
 
-var rngState *randomState
-
-func rngSeedTime() {
-	// rng_seed_int(new Date().getTime());
-	rngSeedInt(1623517380172)
+type randNumGen struct {
+	pptr  int
+	psize int
+	pool  []byte
+	state *randomState
+	time  func() int64
 }
 
-var rng_pptr int
-var rng_psize int
-var rng_pool []byte
+func (rng *randNumGen) seedTime() {
+	var now int64
+	if rng.time != nil {
+		now = rng.time()
+	} else {
+		now = time.Now().UnixMilli()
+	}
+	rng.seedInt(now)
+}
 
-func initRngPool() {
-	if rng_pool == nil {
-		rng_pool = make([]byte, 256)
-		rng_pptr = 0
+func (rng *randNumGen) resetPool() {
+	rng.pptr = 0
+	rng.psize = 0
+	rng.pool = make([]byte, 256)
+}
+
+func (rng *randNumGen) initPool() {
+	if rng.pool == nil {
+		rng.pool = make([]byte, 256)
+		rng.pptr = 0
 
 		r := rand.New(rand.NewSource(99))
 
-		for rng_pptr < rng_psize {
+		for rng.pptr < rng.psize {
 			t := math.Floor(65536 * r.Float64())
 			// t := math.Floor(65536 * math.Random())
-			rng_pool[rng_pptr] = byte(uint64(t) >> 8)
-			rng_pptr++
-			rng_pool[rng_pptr] = byte(uint64(t) & 255)
-			rng_pptr++
+			rng.pool[rng.pptr] = byte(uint64(t) >> 8)
+			rng.pptr++
+			rng.pool[rng.pptr] = byte(uint64(t) & 255)
+			rng.pptr++
 		}
-		rng_pptr = 0
-		rngSeedTime()
+		rng.pptr = 0
+		rng.seedTime()
 	}
 }
 
-func rngSeedInt(x int) {
-	rng_pool[rng_pptr] ^= byte(x & 255)
-	rng_pptr++
-	rng_pool[rng_pptr] ^= byte((x >> 8) & 255)
-	rng_pptr++
-	rng_pool[rng_pptr] ^= byte((x >> 16) & 255)
-	rng_pptr++
-	rng_pool[rng_pptr] ^= byte((x >> 24) & 255)
-	rng_pptr++
+func (rng *randNumGen) seedInt(x int64) {
+	rng.pool[rng.pptr] ^= byte(x & 255)
+	rng.pptr++
+	rng.pool[rng.pptr] ^= byte((x >> 8) & 255)
+	rng.pptr++
+	rng.pool[rng.pptr] ^= byte((x >> 16) & 255)
+	rng.pptr++
+	rng.pool[rng.pptr] ^= byte((x >> 24) & 255)
+	rng.pptr++
 
-	if rng_pptr >= rng_psize {
-		rng_pptr -= rng_psize
+	if rng.pptr >= rng.psize {
+		rng.pptr -= rng.psize
 	}
 	// fmt.Println(rng_pool)
 	// fmt.Println(rng_pptr)
@@ -1133,30 +1111,37 @@ func prng_newstate() *randomState {
 	}
 }
 
-func rngGetByte() byte {
-	if rngState == nil {
-		rngSeedTime()
-		rngState = prng_newstate()
-		rngState.init(rng_pool)
+func (rng *randNumGen) getByte() byte {
+	if rng.state == nil {
+		rng.seedTime()
+		rng.state = prng_newstate()
+		rng.state.init(rng.pool)
 
-		for rng_pptr = 0; rng_pptr < len(rng_pool); rng_pptr++ {
-			rng_pool[rng_pptr] = 0
+		for rng.pptr = 0; rng.pptr < len(rng.pool); rng.pptr++ {
+			rng.pool[rng.pptr] = 0
 		}
 
-		rng_pptr = 0
+		rng.pptr = 0
 	}
 
-	return rngState.next()
+	return rng.state.next()
 }
 
-func processPassword(password, t1Assertion string) string {
-	key := rsaKey{}
-	key.setPublic(
+type rsa struct {
+	key rsaKey
+	rng randNumGen
+}
+
+func (r *rsa) init() {
+	r.key.setPublic(
 		"A6CA1BB4BD803E5704A071E8F7370FD68F2A42CAB574A765693F0F54796CB8AD2CF1B624005119FE651227F7992FF6A6D1979C9B72EA0EAD789F1CBADAB9851779CB8F5F82F40BC71C5C303A10298ED6DC5657E3401AE5720F06836F098366441AC30AB35F13FAB8B6CE81955A1181FCA0AD4EA471CC09C51EAE8EDA42E8C615F933483449CBC67883F407430CB856E4EEC1919BFDD38850CCF5837EC67D8CF802EC30836099592FCDB6CEF4D4AB8EC7F95229B6B262DC6F9A62BFD082CCF98D8FC73FADFA2CCBDDBD17126206E0EC41FE85ECDB9B7631A7EDEF193E4971ADA3E4AB3FFE05F5146907255AD29D0AFB91160C95E225514E1CD07E35BA157A44D1",
 		"10001",
 	)
+	r.rng.initPool()
+}
 
-	res2 := key.encrypt(password + "|" + t1Assertion)
+func (r *rsa) processPassword(password, t1Assertion string) string {
+	res2 := r.key.encrypt(&r.rng, password+"|"+t1Assertion)
 	return hex2b64(res2)
 }
 

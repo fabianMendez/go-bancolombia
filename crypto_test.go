@@ -7,10 +7,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func fixedTestTime() int64 {
+	return 1623517380172
+}
+
 func TestProcessPassword(t *testing.T) {
-	rng_pptr = 0
-	rng_psize = 0
-	rng_pool = make([]byte, 256)
+	r := new(rsa)
+	r.init()
+	r.rng.resetPool()
+	r.rng.time = fixedTestTime
 
 	tests := []struct {
 		name        string
@@ -28,7 +33,7 @@ func TestProcessPassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := processPassword(tt.input, tt.t1Assertion)
+			actual := r.processPassword(tt.input, tt.t1Assertion)
 			assert.Equal(t, tt.output, actual)
 		})
 	}
@@ -53,10 +58,6 @@ func TestRsaSetPublic(t *testing.T) {
 }
 
 func TestRsaEncrypt(t *testing.T) {
-	rng_pptr = 0
-	rng_psize = 0
-	rng_pool = make([]byte, 256)
-
 	t1Assertion := "ozzutFJrd0LBW45xy1kS"
 	k := rsaKey{}
 	k.setPublic(
@@ -64,7 +65,11 @@ func TestRsaEncrypt(t *testing.T) {
 		"10001",
 	)
 
-	actual := k.encrypt("AAAA" + "|" + t1Assertion)
+	rng := randNumGen{}
+	rng.resetPool()
+	rng.time = fixedTestTime
+
+	actual := k.encrypt(&rng, "AAAA"+"|"+t1Assertion)
 	assert.Equal(t,
 		"5061f311e00fdf49014374610a749c32c4e406ce1cceae1a61f7e4f7ad6865764312df5e9c3b63cf7ba6c85ba776d434f8d00f17cf2855764ee53f73b5cee547d8aa987c75b3cb95b323014e01fdbfc43f509adc20fe8642376327e707d1837de7a7cd5a94a900a66f37abd0d06977ff5ae2e27a5bc3a6dbe03dfce7184d21e29457b1970b91e67ad0c6a4979aac7b6223b7986e5b3e875a89d3d0dca82a9c33a028b3d00c40b1520029be357fb90f867308545e58a8f319e154d9ba576dae464e7c88ca29ae7d9c77438f2740f4d341b817b62b75a59a16cde05d6f464e9c06c0224d93250679f9f8367cbfb42feabfa608c0db83a8309ed8be6c59b03704e5",
 		actual)
@@ -100,11 +105,11 @@ func TestNBits(t *testing.T) {
 }
 
 func TestPkcs1pad2(t *testing.T) {
-	rng_pptr = 0
-	rng_psize = 0
-	rng_pool = make([]byte, 256)
+	r := new(randNumGen)
+	r.resetPool()
+	r.time = fixedTestTime
 
-	actual := pkcs1pad2(`AAAA|ozzutFJrd0LBW45xy1kS`, 256)
+	actual := pkcs1pad2(r, `AAAA|ozzutFJrd0LBW45xy1kS`, 256)
 	assert.Equal(t, bigInteger{
 		t: 73, s: 0,
 		DB: 28, DM: 268435455, DV: 268435456, FV: 4503599627370496, F1: 24, F2: 4,
@@ -408,4 +413,19 @@ func TestBigIntegerExp(t *testing.T) {
 		DB: 28, DM: 268435455, DV: 268435456, F1: 24, F2: 4, FV: 4503599627370496,
 		arr: []int64{3605733, 199673243, 137404120, 202225722, 180332040, 201016062, 167261820, 38823839, 2248083, 82428012, 6123334, 161574110, 103511461, 68911483, 121697491, 125057266, 162430364, 130583714, 229525070, 228304246, 52027732, 98929295, 108202068, 133927160, 2735669, 67835168, 146001932, 163789314, 14460970, 94936381, 240860807, 37452166, 179075938, 208292217, 31881936, 186216633, 31626327, 242320594, 199245308, 96221805, 182641274, 110591989, 128700624, 681715, 224040105, 132020860, 117952899, 58077822, 16680514, 84520386, 230671423, 1368095, 194360099, 130505532, 131639960, 190639700, 249905011, 42293092, 989135, 222515085, 140224374, 217561708, 245119843, 70331893, 224945526, 259936122, 246291041, 7135692, 204653796, 101754697, 151077748, 234946036, 6419217, 5, 3605733, 199673243, 137404120, 202225722, 180332040, 201016062, 167261820, 38823839, 2248083, 82428012, 6123334, 161574110, 103511461, 68911483, 121697491, 125057266, 162430364, 130583714, 229525070, 228304246, 52027732, 98929295, 108202068, 133927160, 2735669, 67835168, 146001932, 163789314, 14460970, 94936381, 240860807, 37452166, 179075938, 208292217, 31881936, 186216633, 31626327, 242320594, 199245308, 96221805, 182641274, 110591989, 128700624, 681715, 224040105, 132020860, 117952899, 58077822, 16680514, 84520386, 230671423, 1368095, 194360099, 130505532, 131639960, 190639700, 249905011, 42293092, 989135, 222515085, 140224374, 217561708, 245119843, 70331893, 224945526, 259936122, 246291041, 7135692, 204653796, 101754697, 151077748, 234946036, 6419217, 5, 0},
 	}, actual)
+}
+
+func TestIntAt(t *testing.T) {
+	tests := map[rune]int{
+		48: 0, 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 55: 7, 56: 8, 57: 9,
+		65: 10, 66: 11, 67: 12, 68: 13, 69: 14, 70: 15, 71: 16, 72: 17, 73: 18, 74: 19, 75: 20, 76: 21, 77: 22, 78: 23, 79: 24, 80: 25, 81: 26, 82: 27, 83: 28, 84: 29, 85: 30, 86: 31, 87: 32, 88: 33, 89: 34, 90: 35,
+		97: 10, 98: 11, 99: 12, 100: 13, 101: 14, 102: 15, 103: 16, 104: 17, 105: 18, 106: 19, 107: 20, 108: 21, 109: 22, 110: 23, 111: 24, 112: 25, 113: 26, 114: 27, 115: 28, 116: 29, 117: 30, 118: 31, 119: 32, 120: 33, 121: 34, 122: 35,
+	}
+
+	for r, expected := range tests {
+		t.Run("", func(t *testing.T) {
+			actual := runeIndex(r)
+			assert.Equal(t, expected, actual)
+		})
+	}
 }
