@@ -12,7 +12,7 @@ import (
 )
 
 func TestParseT1Assertion(t *testing.T) {
-	f, err := os.Open("./password.html")
+	f, err := os.Open("./testdata/password.html")
 	require.NoError(t, err)
 	defer f.Close()
 
@@ -24,7 +24,7 @@ func TestParseT1Assertion(t *testing.T) {
 }
 
 func TestParseKeyboardContent(t *testing.T) {
-	f, err := os.Open("./password.html")
+	f, err := os.Open("./testdata/password.html")
 	require.NoError(t, err)
 	defer f.Close()
 
@@ -61,7 +61,7 @@ func TestParsePasswordInputName(t *testing.T) {
 		expected string
 	}{
 		{
-			filename: "./password.html",
+			filename: "./testdata/password.html",
 			expected: "uvdEMkTtiXlW",
 		},
 		{
