@@ -28,28 +28,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rdr := bufio.NewReader(os.Stdin)
-
-	user, found := os.LookupEnv("AUTH_USER")
-	if !found {
-		fmt.Print("User: ")
-		user, err = rdr.ReadString('\n')
-		if err != nil {
-			log.Fatal("User required")
-		}
-		user = strings.TrimSpace(user)
-	}
-
-	password, found := os.LookupEnv("AUTH_PASS")
-	if !found {
-		fmt.Print("Password: ")
-		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			log.Fatal("Password required")
-		}
-		fmt.Println()
-		password = string(bytePassword)
-	}
+	user, password, err := readCredentials()
+ if err != nil {
+  log.Fatal("couldn't read credentials: ", err)
+ }
 
 	err = cl.Login(user, password)
 	if err != nil {
@@ -103,4 +85,30 @@ func main() {
 	}
 
 	tableB.Render()
+}
+
+func readCredentials() (string, string, error) {
+ rdr := bufio.NewReader(os.Stdin)
+
+	user, found := os.LookupEnv("AUTH_USER")
+	if !found {
+		fmt.Print("User: ")
+		user, err = rdr.ReadString('\n')
+		if err != nil {
+			return "", "", fmt.Errorf("User required")
+		}
+		user = strings.TrimSpace(user)
+	}
+
+	password, found := os.LookupEnv("AUTH_PASS")
+	if !found {
+		fmt.Print("Password: ")
+		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return "", "", fmt.Errorf("Password required")
+		}
+		fmt.Println()
+		password = string(bytePassword)
+	}
+ return user, password, nil
 }
