@@ -8,8 +8,6 @@ import (
 	"strings"
 	"syscall"
 
-	// "os"
-
 	"github.com/dustin/go-humanize"
 	"github.com/joho/godotenv"
 	"github.com/olekukonko/tablewriter"
@@ -88,6 +86,7 @@ func main() {
 }
 
 func readCredentials() (string, string, error) {
+ var err error
  rdr := bufio.NewReader(os.Stdin)
 
 	user, found := os.LookupEnv("AUTH_USER")
